@@ -5,13 +5,13 @@
 // no está. Se informa como estado, nunca como modal que bloquee, y nunca en
 // rojo — `peligro` es para acciones destructivas, no para "todavía no subió".
 // Sus datos están a salvo en el dispositivo igual; por eso el texto lo dice.
-import React, { useEffect, useState } from 'react'
-import { observarEstadoSync, empujar } from '../lib/sync.js'
+import React from 'react'
+import { empujar } from '../lib/sync.js'
+import { useEstadoSync } from '../hooks/useSync.js'
 import { IconCheck, IconInfo, IconUpload } from '../components/icons.jsx'
 
 export default function EstadoSync() {
-  const [estado, setEstado] = useState({ fase: 'inactivo' })
-  useEffect(() => observarEstadoSync(setEstado), [])
+  const estado = useEstadoSync()
 
   if (estado.fase === 'inactivo') return null
 

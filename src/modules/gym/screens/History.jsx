@@ -81,7 +81,7 @@ export default function History({ fecha, onSalir }) {
           onChange={(e) => setEjSel(e.target.value)}
           className="mb-3 w-full rounded-xl border border-borde/25 bg-fondo p-3 text-sm text-texto"
         >
-          <option value="">Elegí un ejercicio…</option>
+          <option value="">Elige un ejercicio…</option>
           {ejercicios.map((e) => (
             <option key={e} value={e}>{e}</option>
           ))}

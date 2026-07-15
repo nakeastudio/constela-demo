@@ -106,7 +106,7 @@ export default function PlanEditor({ onSalir }) {
       await navigator.clipboard.writeText(exportarPlan)
       alert('Plan copiado. Pegalo donde quieras (nutricionista / IA).')
     } catch {
-      alert('No se pudo copiar automáticamente. Seleccioná el texto y copialo a mano.')
+      alert('No se pudo copiar automáticamente. Selecciona el texto y cópialo a mano.')
     }
   }
   const aplicarImport = () => {
@@ -360,7 +360,7 @@ export default function PlanEditor({ onSalir }) {
       {/* ---- Compartir / Importar plan (JSON) ---- */}
       <div className="space-y-2 rounded-2xl border border-borde/25 bg-superficie p-4 shadow-suave">
         <h2 className="font-bold tracking-tight text-texto">Compartir / Importar plan</h2>
-        <p className="text-xs text-texto-soft">Exportá el plan para mandárselo al nutricionista o a una IA, y pegá de vuelta la versión que te devuelvan.</p>
+        <p className="text-xs text-texto-soft">Exporta el plan para enviárselo al nutricionista o a una IA, y pega de vuelta la versión que te devuelvan.</p>
         <div className="grid grid-cols-2 gap-2">
           <button onClick={() => setPanel(panel === 'export' ? null : 'export')} className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl bg-marca text-sm font-bold text-contraste active:scale-95">
             <IconDownload className="h-4 w-4" /> Exportar
@@ -383,7 +383,7 @@ export default function PlanEditor({ onSalir }) {
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
               rows={6}
-              placeholder="Pegá acá el JSON del plan…"
+              placeholder="Pega aquí el JSON del plan…"
               className={`w-full font-mono text-[11px] text-texto ${inputBase}`}
             />
             <button onClick={aplicarImport} disabled={!importText.trim()} className="min-h-[44px] w-full rounded-xl bg-marca text-sm font-bold text-contraste active:scale-95 disabled:opacity-50">

@@ -14,6 +14,7 @@ import {
 } from '../components/icons.jsx'
 import Toggle from '../components/Toggle.jsx'
 import EstadoSync from '../components/EstadoSync.jsx'
+import { useEstadoSync, fraseDondeViven } from '../hooks/useSync.js'
 
 // Chip de icono reutilizable: cuadrado redondeado con tinte de marca.
 function IconChip({ children }) {
@@ -38,6 +39,7 @@ export default function Settings({
   onModulosChange
 }) {
   const fileRef = useRef(null)
+  const estadoSync = useEstadoSync()
   // La lista sale del REGISTRO, no de una constante: el día que skincare se
   // registre, su interruptor aparece solo. Un interruptor que no prende nada
   // sería mentirle a quien lo toca.
@@ -146,7 +148,7 @@ export default function Settings({
           <IconChip>{dark ? <IconMoon className="h-5 w-5" /> : <IconSun className="h-5 w-5" />}</IconChip>
           <div className="flex-1 text-left">
             <p className="font-bold tracking-tight text-texto">{dark ? 'Modo oscuro' : 'Modo claro'}</p>
-            <p className="text-xs font-medium text-texto-soft">Tocá para cambiar el tema</p>
+            <p className="text-xs font-medium text-texto-soft">Toca para cambiar el tema</p>
           </div>
           <Toggle checked={dark} />
         </button>
@@ -217,7 +219,7 @@ export default function Settings({
           <div className="mb-3 flex items-center gap-3">
             <IconChip><IconDownload className="h-5 w-5" /></IconChip>
             <p className="text-sm font-medium text-texto-soft">
-              Exportá todo (sesiones, PRs, rutina) o importá desde otro celular.
+              Exporta todo (sesiones, PRs, rutina) o importa desde otro celular.
             </p>
           </div>
           <div className="space-y-2">
@@ -238,7 +240,13 @@ export default function Settings({
         </div>
       </div>
 
-      <p className="pt-2 text-center text-xs font-medium text-texto-soft">Constela · datos guardados solo en este dispositivo</p>
+      {/* Dónde viven los datos NO puede ser una constante: era cierto cuando
+          localStorage era el único almacén y deja de serlo al iniciar sesión.
+          Sale del mismo estado que muestra EstadoSync, no de una segunda fuente. */}
+      <p className="pt-2 text-center text-xs font-medium leading-relaxed text-texto-soft">
+        Constela
+        <span className="mt-0.5 block">{fraseDondeViven(estadoSync, email)}</span>
+      </p>
     </div>
   )
 }

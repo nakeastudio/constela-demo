@@ -2,10 +2,12 @@
 //  PERFIL — pantalla de datos personales (se abre desde Ajustes)
 // ============================================================
 // Se autoguarda, como el resto de la app: sin botón de guardar.
-// Estos datos no viven en el repo: se cargan acá y quedan en el dispositivo.
+// Estos datos no viven en el repo: se cargan acá y se guardan en el dispositivo
+// (y, con sesión abierta, se sincronizan — la pantalla lo dice sin adivinar).
 
 import React, { useEffect, useRef, useState } from 'react'
 import { getPerfil, savePerfil } from '../lib/perfil.js'
+import { useEstadoSync, fraseDondeViven } from '../hooks/useSync.js'
 import { IconChevronLeft } from '../components/icons.jsx'
 
 const CAMPOS = [
@@ -15,8 +17,9 @@ const CAMPOS = [
   { id: 'altura', label: 'Altura', tipo: 'number', sufijo: 'cm', placeholder: '' }
 ]
 
-export default function Perfil({ onSalir }) {
+export default function Perfil({ email, onSalir }) {
   const [perfil, setPerfil] = useState(() => getPerfil())
+  const estadoSync = useEstadoSync()
 
   // Autoguardado en cada cambio (igual que la sesión y la nutrición).
   const montado = useRef(false)
@@ -70,15 +73,18 @@ export default function Perfil({ onSalir }) {
           <textarea
             value={perfil.objetivo ?? ''}
             onChange={(e) => cambiar('objetivo', e.target.value)}
-            placeholder="Qué estás buscando con esto"
+            placeholder="Qué buscas con esto"
             rows={2}
             className="w-full resize-none rounded-xl border border-borde/25 bg-fondo p-3 text-sm text-texto outline-none focus:border-marca"
           />
         </label>
       </div>
 
+      {/* Antes esto afirmaba "solo en este dispositivo" pasara lo que pasara.
+          Ahora dice lo que es cierto, incluida la cuenta: en un navegador
+          compartido, "se sincroniza" sin decir con quién es media verdad. */}
       <p className="px-1 text-xs font-medium leading-relaxed text-texto-soft">
-        Estos datos quedan solo en este dispositivo. La app los usa para calcular
+        {fraseDondeViven(estadoSync, email)} La app usa estos datos para calcular
         referencias — por ejemplo, el techo útil de proteína a partir del peso.
       </p>
     </div>

@@ -5,7 +5,7 @@
 // (y mañana skincare), no tres apps separadas que comparten una fecha.
 //
 // El día NO se guarda: se compone al leer. Cada módulo es dueño de su propio
-// almacenamiento y responde "¿qué tenés de esta fecha?". Guardar además un
+// almacenamiento y responde "¿qué tienes de esta fecha?". Guardar además un
 // registro-de-día duplicaría la fuente de verdad y pediría sincronizarlos.
 //
 // ---- Convención de marcado (la comparten TODOS los módulos) ----

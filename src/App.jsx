@@ -208,7 +208,7 @@ export default function App({ sesion }) {
       {vista === 'gymHistory' && <History fecha={fechaFoco} onSalir={() => irA('history')} />}
       {vista === 'report' && <Report onSalir={() => irA('hoy')} />}
       {vista === 'routine' && <Routine rutina={rutina} onChange={setRutina} onSalir={() => setVista('settings')} />}
-      {vista === 'perfil' && <Perfil onSalir={() => setVista('settings')} />}
+      {vista === 'perfil' && <Perfil email={sesion?.user?.email} onSalir={() => setVista('settings')} />}
       {vista === 'acceso' && <Acceso onSalir={() => setVista('settings')} />}
       {vista === 'plan' && <PlanEditor onSalir={() => setVista('settings')} />}
       {vista === 'settings' && (

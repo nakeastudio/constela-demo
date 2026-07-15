@@ -35,6 +35,12 @@ export function registrarSync(m) {
 
 // --- Estado observable (para el indicador de Ajustes) ---
 // 'inactivo' | 'sincronizando' | 'ok' | 'error'
+//
+// `ultimoOk` NO es decorativo: es lo único que separa "nunca se sincronizó" de
+// "se sincronizaba bien y ahora falla". Esa diferencia decide si la app puede
+// decirle que sus datos están a salvo en la nube o solo en el teléfono, así que
+// se PERSISTE por usuario. En memoria se perdía en cada recarga y la app habría
+// dicho "nunca" de alguien que sincronizó ayer — la misma mentira al revés.
 let estado = { fase: 'inactivo', detalle: '', ultimoOk: null }
 const oyentes = new Set()
 export function observarEstadoSync(fn) {
@@ -58,11 +64,20 @@ const FOTO = '_sync_foto'
 const fotos = () => leer(FOTO, {})
 const guardarFotos = (f) => localStorage.setItem(clave(FOTO), JSON.stringify(f))
 
+// --- Última sincronización con éxito (por usuario, persistida) ---
+const ULTIMO_OK = '_sync_ultimo_ok'
+const leerUltimoOk = () => leer(ULTIMO_OK, null)
+function marcarOk() {
+  const cuando = new Date().toISOString()
+  localStorage.setItem(clave(ULTIMO_OK), JSON.stringify(cuando))
+  return cuando
+}
+
 // --- Encolado ---
 // Solo marca y agenda. Nadie espera red acá.
 function encolar(nombre) {
   if (!uid || !hayBackend) return
-  if (nombre === FOTO) return // la foto no se sincroniza a sí misma
+  if (nombre === FOTO || nombre === ULTIMO_OK) return // la contabilidad interna no se sincroniza
   const esSync = mapa.documentos.includes(nombre) || !!mapa.colecciones[nombre]
   if (!esSync) return
   clearTimeout(temporizador)
@@ -122,11 +137,12 @@ export async function empujar() {
     }
 
     guardarFotos(f)
-    setEstado({ fase: 'ok', detalle: '', ultimoOk: new Date().toISOString() })
+    setEstado({ fase: 'ok', detalle: '', ultimoOk: marcarOk() })
   } catch (e) {
     // Guardamos lo que SÍ se subió: reintentar no repite trabajo hecho.
     guardarFotos(f)
-    // Sin red esto es lo normal, no una falla de la app.
+    // Sin red esto es lo normal, no una falla de la app. `ultimoOk` NO se toca:
+    // que esto falle no borra el hecho de que alguna vez funcionó.
     setEstado({ fase: 'error', detalle: mensajeDeError(e) })
   }
 }
@@ -192,7 +208,7 @@ export async function hidratar() {
     }
 
     guardarFotos(f)
-    setEstado({ fase: 'ok', detalle: '', ultimoOk: new Date().toISOString() })
+    setEstado({ fase: 'ok', detalle: '', ultimoOk: marcarOk() })
     // Lo que quedó sucio (o nunca se subió) sale ahora. Este es el camino del
     // PRIMER LOGIN con datos locales: nada tiene foto ⇒ todo está sucio ⇒ sube.
     await empujar()
@@ -228,7 +244,7 @@ export function legadoReclamadoPor() {
 
 export function reclamarLegado(uidNuevo, claves) {
   const yaFue = legadoReclamadoPor()
-  if (yaFue) return { reclamado: false, motivo: yaFue === uidNuevo ? 'ya-reclamado-por-vos' : 'de-otra-persona' }
+  if (yaFue) return { reclamado: false, motivo: yaFue === uidNuevo ? 'ya-reclamado-por-esta-persona' : 'de-otra-persona' }
 
   const origen = prefijoDe(null)
   const destino = prefijoDe(uidNuevo)
@@ -258,7 +274,14 @@ export function iniciarSync(uidNuevo) {
   uid = uidNuevo
   setUsuarioActual(uidNuevo)
   observarEscrituras(encolar)
-  setEstado({ fase: uidNuevo && hayBackend ? 'sincronizando' : 'inactivo', detalle: '' })
+  // El uid ya está fijado, así que esto lee la marca DE ESTA persona: alguien
+  // que entra por primera vez en un navegador ajeno no hereda el "ya sincronizó"
+  // de la anterior.
+  setEstado({
+    fase: uidNuevo && hayBackend ? 'sincronizando' : 'inactivo',
+    detalle: '',
+    ultimoOk: uidNuevo ? leerUltimoOk() : null
+  })
 }
 
 // Salir NO borra nada local: las claves del usuario quedan intactas bajo su

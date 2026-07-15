@@ -587,8 +587,8 @@ export default function Nutricion({ fechaInicial, onSalir }) {
               ) : (
                 <>
                   El máximo aprovechable para construir músculo es tu peso × {FACTOR_PROTEINA}g. Más
-                  proteína no construye más: el resto se procesa como energía. Cargá tu peso en
-                  Ajustes → Perfil y el número aparece acá.
+                  proteína no construye más: el resto se procesa como energía. Carga tu peso en
+                  Ajustes → Perfil y el número aparece aquí.
                 </>
               )}
             </p>
