@@ -105,7 +105,19 @@ export const moduloNutricion = {
     return d || null
   },
 
-  fechasConRegistro: () => Object.keys(getDias())
+  fechasConRegistro: () => Object.keys(getDias()),
+
+  // Una línea para el Historial. Sin registro guardado devuelve null: abrir un
+  // día no lo convierte en historia.
+  resumenDia: (fecha) => {
+    if (!getDias()[fecha]) return null
+    const r = getDiaNutricion(fecha)
+    const dia = getPlan().dias[claveDiaDeFecha(fecha)]
+    const total = dia?.comidas.length || 0
+    const hechas = dia ? dia.comidas.filter((c) => r.comidas[c.id]?.done).length : 0
+    const litros = (r.agua.ml / 1000).toFixed(2).replace(/\.?0+$/, '')
+    return { detalle: `${hechas}/${total} comidas · ${litros}L` }
+  }
 
   // markdownSemana se engancha en modules/registro.js (ver gym/lib/storage.js).
 }

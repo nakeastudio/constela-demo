@@ -20,11 +20,13 @@ import {
 } from '../lib/storage.js'
 import { techoProteina, FACTOR_PROTEINA } from '../data/plan.js'
 import { getPerfil } from '../../../core/lib/perfil.js'
-import { alternarItem, marcarItem } from '../../../core/lib/dia.js'
-import { hoyISO, rangoSemana, fromISO, toISO, fmtLargo, nombreDiaSemana } from '../../../core/lib/dates.js'
+import { alternarItem, marcarItem, ahoraEnFecha, horaDe, conHora } from '../../../core/lib/dia.js'
+import { hoyISO, rangoSemana, enRango, fromISO, toISO, fmtLargo, fmtCorto, nombreDiaSemana } from '../../../core/lib/dates.js'
 import {
   IconChevronLeft,
+  IconChevronRight,
   IconCheck,
+  IconClock,
   IconWater,
   IconPill,
   IconNote,
@@ -86,8 +88,10 @@ function tieneAlgo(r) {
 }
 
 // --- Tira de la semana: los días son puntos ---
+// La semana se deriva de la FECHA que se está mirando, no de hoy: así el pasado
+// es alcanzable. Antes se anclaba a `hoyISO()` y la semana pasada no existía.
 function TiraSemana({ fecha, onIr }) {
-  const { inicio } = rangoSemana(hoyISO())
+  const { inicio, fin } = rangoSemana(fecha)
   const dias = useMemo(() => {
     const base = fromISO(inicio)
     return Array.from({ length: 7 }, (_, i) => {
@@ -97,30 +101,94 @@ function TiraSemana({ fecha, onIr }) {
     })
   }, [inicio])
 
+  // Mover de semana mueve la fecha: fecha y semana no pueden separarse, o la
+  // tira mostraría una semana y el registro sería de otra.
+  const moverSemana = (delta) => {
+    const d = fromISO(fecha)
+    d.setDate(d.getDate() + delta * 7)
+    onIr(toISO(d))
+  }
+
+  const hoy = hoyISO()
+  const estaSemana = enRango(hoy, inicio, fin)
+
   return (
-    <div className="flex gap-1.5">
-      {dias.map((f) => {
-        const activo = f === fecha
-        const esHoy = f === hoyISO()
-        return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <button
+          onClick={() => moverSemana(-1)}
+          aria-label="Semana anterior"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-marca active:bg-marca/15"
+        >
+          <IconChevronLeft className="h-5 w-5" />
+        </button>
+        <p className="min-w-0 flex-1 truncate text-center text-xs font-bold tabular-nums text-texto-soft">
+          {fmtCorto(inicio)} – {fmtCorto(fin)}
+        </p>
+        {/* Volver a hoy: sin esto, alejarse mucho obliga a contar semanas. */}
+        {!estaSemana && (
           <button
-            key={f}
-            onClick={() => onIr(f)}
-            aria-current={activo ? 'date' : undefined}
-            aria-label={`${nombreDiaSemana(f)} ${f}`}
-            className={`flex h-11 flex-1 flex-col items-center justify-center rounded-xl text-[11px] font-bold transition-colors ${
-              activo
-                ? 'bg-marca text-contraste'
-                : esHoy
-                  ? 'bg-superficie-alta text-marca'
-                  : 'bg-superficie text-texto-soft'
-            }`}
+            onClick={() => onIr(hoy)}
+            className="min-h-[44px] shrink-0 rounded-xl px-3 text-xs font-bold text-marca active:bg-marca/15"
           >
-            {nombreDiaSemana(f).slice(0, 3)}
+            Hoy
           </button>
-        )
-      })}
+        )}
+        <button
+          onClick={() => moverSemana(1)}
+          aria-label="Semana siguiente"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-marca active:bg-marca/15"
+        >
+          <IconChevronRight className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="flex gap-1.5">
+        {dias.map((f) => {
+          const activo = f === fecha
+          const esHoy = f === hoy
+          return (
+            <button
+              key={f}
+              onClick={() => onIr(f)}
+              aria-current={activo ? 'date' : undefined}
+              aria-label={`${nombreDiaSemana(f)} ${f}`}
+              className={`flex h-11 flex-1 flex-col items-center justify-center rounded-xl text-[11px] font-bold transition-colors ${
+                activo
+                  ? 'bg-marca text-contraste'
+                  : esHoy
+                    ? 'bg-superficie-alta text-marca'
+                    : 'bg-superficie text-texto-soft'
+              }`}
+            >
+              {nombreDiaSemana(f).slice(0, 3)}
+            </button>
+          )
+        })}
+      </div>
     </div>
+  )
+}
+
+// --- Hora de un registro: editable, discreta ---
+// Lo normal es marcar algo en el momento y no tocar la hora nunca. Por eso esto
+// es una línea chica debajo del ítem y no un campo del formulario.
+// Sin hora (registros viejos) el input queda vacío: nunca "Invalid Date", nunca
+// una hora inventada.
+function HoraRegistro({ registradoEn, fecha, onCambiar, className = '' }) {
+  const hora = horaDe(registradoEn)
+  return (
+    <label className={`mt-2 flex items-center gap-1.5 text-[11px] font-medium ${className}`}>
+      <IconClock className="h-3.5 w-3.5 shrink-0" />
+      <span className="sr-only">Hora del registro</span>
+      <input
+        type="time"
+        value={hora}
+        onChange={(e) => onCambiar(conHora(registradoEn, e.target.value, fecha))}
+        className="min-h-[44px] rounded-lg bg-transparent px-1 font-semibold tabular-nums outline-none focus:bg-current/10"
+      />
+      {!hora && <span className="opacity-75">sin hora</span>}
+    </label>
   )
 }
 
@@ -163,7 +231,7 @@ function SelectorCarbo({ carbos, elegido, onElegir, estilo }) {
 }
 
 // --- Tarjeta de comida ---
-function TarjetaComida({ comida, registro, carbos, onToggle, onNota, onCarbo }) {
+function TarjetaComida({ comida, registro, carbos, fecha, onToggle, onNota, onCarbo, onHora }) {
   const estilo = estiloDe(comida.categoria)
   const hecho = !!registro?.done
   const [abriNota, setAbriNota] = useState(!!registro?.nota)
@@ -201,6 +269,16 @@ function TarjetaComida({ comida, registro, carbos, onToggle, onNota, onCarbo }) 
         </button>
       </div>
 
+      {/* La hora solo tiene sentido si la comida está marcada. */}
+      {hecho && (
+        <HoraRegistro
+          registradoEn={registro?.registradoEn}
+          fecha={fecha}
+          onCambiar={onHora}
+          className={estilo.suave}
+        />
+      )}
+
       {comida.carbo && (
         <SelectorCarbo
           carbos={carbos}
@@ -232,7 +310,7 @@ function TarjetaComida({ comida, registro, carbos, onToggle, onNota, onCarbo }) 
 }
 
 // --- Suplementos: no son comidas, siguen otro ritmo ---
-function Suplementos({ lista, registro, onToggle }) {
+function Suplementos({ lista, registro, fecha, onToggle, onHora }) {
   const bloques = [
     { momento: 'am', titulo: 'Mañana' },
     { momento: 'pm', titulo: 'Noche' }
@@ -254,26 +332,38 @@ function Suplementos({ lista, registro, onToggle }) {
               <div className="space-y-1.5">
                 {items.map((s) => {
                   const hecho = !!registro[s.id]?.done
+                  // El input de hora NO puede vivir dentro del <button>: sería
+                  // HTML inválido y cada toque en la hora desmarcaría el ítem.
+                  // Por eso son hermanos dentro de la tarjeta.
                   return (
-                    <button
-                      key={s.id}
-                      onClick={() => onToggle(s.id)}
-                      role="switch"
-                      aria-checked={hecho}
-                      className="flex w-full items-center gap-3 rounded-xl bg-superficie-alta p-2.5 text-left active:scale-[0.99]"
-                    >
-                      <span
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                          hecho ? 'bg-completo text-contraste' : 'border-2 border-borde/40 text-texto-soft'
-                        }`}
+                    <div key={s.id} className="rounded-xl bg-superficie-alta p-2.5">
+                      <button
+                        onClick={() => onToggle(s.id)}
+                        role="switch"
+                        aria-checked={hecho}
+                        className="flex min-h-[44px] w-full items-center gap-3 text-left active:scale-[0.99]"
                       >
-                        <IconCheck className="h-4 w-4" />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-bold text-texto">{s.nombre}</span>
-                        <span className="block text-xs font-medium text-texto-soft">{s.detalle}</span>
-                      </span>
-                    </button>
+                        <span
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                            hecho ? 'bg-completo text-contraste' : 'border-2 border-borde/40 text-texto-soft'
+                          }`}
+                        >
+                          <IconCheck className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-bold text-texto">{s.nombre}</span>
+                          <span className="block text-xs font-medium text-texto-soft">{s.detalle}</span>
+                        </span>
+                      </button>
+                      {hecho && (
+                        <HoraRegistro
+                          registradoEn={registro[s.id]?.registradoEn}
+                          fecha={fecha}
+                          onCambiar={(iso) => onHora(s.id, iso)}
+                          className="text-texto-soft"
+                        />
+                      )}
+                    </div>
                   )
                 })}
               </div>
@@ -329,7 +419,10 @@ function Agua({ ml, objetivoL, onCambiar }) {
 }
 
 // ============================================================
-export default function Nutricion({ onSalir }) {
+// `fechaInicial` permite abrir esta misma pantalla en un día pasado (desde
+// Historial). No hay un editor aparte para el pasado: es la pantalla de siempre,
+// mirando otra fecha.
+export default function Nutricion({ fechaInicial, onSalir }) {
   // `sello` fuerza releer el plan tras restaurarlo.
   const [sello, setSello] = useState(0)
   const plan = useMemo(() => getPlan(), [sello])
@@ -339,7 +432,7 @@ export default function Nutricion({ onSalir }) {
   // Fecha y registro viajan juntos: si se separan, el autoguardado escribe el
   // registro de un día en la fecha de otro.
   const [estado, setEstado] = useState(() => {
-    const f = hoyISO()
+    const f = fechaInicial || hoyISO()
     return { fecha: f, registro: getDiaNutricion(f) }
   })
   const { fecha, registro } = estado
@@ -362,10 +455,19 @@ export default function Nutricion({ onSalir }) {
   // Techo útil de proteína: derivado del peso del perfil, nunca fijo.
   const techo = useMemo(() => techoProteina(getPerfil().peso), [sello])
 
+  // Marcar sella el día que se está mirando, no "ahora": marcar el lunes desde
+  // el miércoles no puede quedar registrado el miércoles. La hora es una
+  // suposición editable (ver ahoraEnFecha en core/lib/dia.js).
   const toggleComida = (id) =>
     actualizar((r) => ({
       ...r,
-      comidas: { ...r.comidas, [id]: alternarItem(r.comidas[id] || {}) }
+      comidas: { ...r.comidas, [id]: alternarItem(r.comidas[id] || {}, ahoraEnFecha(fecha)) }
+    }))
+
+  const horaComida = (id, registradoEn) =>
+    actualizar((r) => ({
+      ...r,
+      comidas: { ...r.comidas, [id]: { ...(r.comidas[id] || { done: false }), registradoEn } }
     }))
 
   const notaComida = (id, nota) =>
@@ -383,13 +485,19 @@ export default function Nutricion({ onSalir }) {
   const toggleSuplemento = (id) =>
     actualizar((r) => ({
       ...r,
-      suplementos: { ...r.suplementos, [id]: alternarItem(r.suplementos[id] || {}) }
+      suplementos: { ...r.suplementos, [id]: alternarItem(r.suplementos[id] || {}, ahoraEnFecha(fecha)) }
+    }))
+
+  const horaSuplemento = (id, registradoEn) =>
+    actualizar((r) => ({
+      ...r,
+      suplementos: { ...r.suplementos, [id]: { ...(r.suplementos[id] || { done: false }), registradoEn } }
     }))
 
   const cambiarAgua = (ml) =>
     actualizar((r) => ({
       ...r,
-      agua: ml > 0 ? marcarItem({ ...r.agua, ml }) : { ml: 0, registradoEn: null }
+      agua: ml > 0 ? marcarItem({ ...r.agua, ml }, ahoraEnFecha(fecha)) : { ml: 0, registradoEn: null }
     }))
 
   const hechas = dia ? dia.comidas.filter((c) => registro.comidas[c.id]?.done).length : 0
@@ -444,16 +552,20 @@ export default function Nutricion({ onSalir }) {
               comida={c}
               registro={registro.comidas[c.id]}
               carbos={plan.carbos}
+              fecha={fecha}
               onToggle={() => toggleComida(c.id)}
               onNota={(n) => notaComida(c.id, n)}
               onCarbo={(k) => carboComida(c.id, k)}
+              onHora={(iso) => horaComida(c.id, iso)}
             />
           ))}
 
           <Suplementos
             lista={plan.suplementos}
             registro={registro.suplementos}
+            fecha={fecha}
             onToggle={toggleSuplemento}
+            onHora={horaSuplemento}
           />
 
           <Agua ml={registro.agua.ml} objetivoL={objetivoL} onCambiar={cambiarAgua} />

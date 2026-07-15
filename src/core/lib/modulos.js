@@ -11,6 +11,9 @@
 //   importar(porcion)   ← restaura esa porción
 //   diaSlice(fecha)     → su registro de ese día, o null si no hay nada
 //   fechasConRegistro() → fechas ISO en las que el módulo tiene algo guardado
+//   resumenDia(fecha)   → { detalle } legible para Historial, o null si no hay
+//                         nada ese día. Core no sabe leer la porción de nadie:
+//                         cada módulo la resume en una línea.
 //   markdownSemana(iso) → (opcional) su sección del reporte para IA
 
 import { getSettings, saveSettings } from './storage.js'

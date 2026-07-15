@@ -5,19 +5,21 @@
 // Ajustes) y no crece. Los tableros de cada módulo — `gym`, `nutricion`,
 // `routine` — viven FUERA de la barra: se abren desde su tarjeta en Hoy (o
 // desde Ajustes, en el caso de la rutina) y la ocultan mientras están abiertos.
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import Hoy from './core/screens/Hoy.jsx'
+import Historial from './core/screens/Historial.jsx'
 import Home from './modules/gym/screens/Home.jsx'
 import Session from './modules/gym/screens/Session.jsx'
 import History from './modules/gym/screens/History.jsx'
 import Report from './modules/gym/screens/Report.jsx'
 import Routine from './modules/gym/screens/Routine.jsx'
+import RestTimer from './modules/gym/components/RestTimer.jsx'
+import { useRestTimer } from './modules/gym/hooks/useRestTimer.js'
 import Nutricion from './modules/nutricion/screens/Nutricion.jsx'
 import PlanEditor from './modules/nutricion/screens/PlanEditor.jsx'
 import Settings from './core/screens/Settings.jsx'
 import Perfil from './core/screens/Perfil.jsx'
 import BottomNav from './core/layout/BottomNav.jsx'
-import Vacio from './core/components/Vacio.jsx'
 import { moduloActivo } from './core/lib/modulos.js'
 import { useTheme } from './core/hooks/useTheme.js'
 import { getRutina } from './modules/gym/lib/storage.js'
@@ -28,7 +30,9 @@ import { IconTrophy, IconDumbbell, IconSalad } from './core/components/icons.jsx
 
 // Vistas a pantalla completa: tableros de módulo y la sesión. Mientras están
 // abiertas, la barra se esconde.
-const SIN_BARRA = ['session', 'routine', 'gym', 'nutricion', 'perfil', 'plan']
+// `gymHistory` es el historial DEL GYM: se abre desde el Historial cruzado (que
+// sí vive en la barra), igual que un tablero de módulo.
+const SIN_BARRA = ['session', 'routine', 'gym', 'nutricion', 'perfil', 'plan', 'gymHistory']
 
 // Toast simple para anunciar PRs al finalizar
 function Toast({ mensaje, onClose }) {
@@ -54,15 +58,40 @@ export default function App() {
   const [toast, setToast] = useState('')
   // Cambia al volver a Hoy: fuerza recalcular los resúmenes de las tarjetas.
   const [sello, setSello] = useState(0)
+  // Fecha con la que se abre una pantalla de módulo desde el Historial.
+  // null = hoy (el caso normal, entrando desde Hoy).
+  const [fechaFoco, setFechaFoco] = useState(null)
+
+  // El descanso vive ACÁ y no en Session: es parte del entrenamiento, no de una
+  // pantalla. Adentro de Session, navegar la desmontaba y el cronómetro moría a
+  // mitad del descanso (y soltaba el wake lock). App no se desmonta nunca.
+  const timer = useRestTimer()
+  const gymActivo = moduloActivo('gym')
+
+  // Si apaga el gym con un descanso corriendo, el panel no puede quedar colgado
+  // ni el wake lock tomado por un módulo que ya no se muestra.
+  useEffect(() => {
+    if (!gymActivo) timer.detener()
+  }, [gymActivo, timer.detener])
 
   const irA = (v) => {
     if (v === 'hoy') setSello((n) => n + 1)
+    setFechaFoco(null)
     setVista(v)
   }
 
   const seleccionarDia = (key) => {
     setDiaKey(key)
     setVista('session')
+  }
+
+  // Historial → la pantalla del módulo, en esa fecha. No hay editor del pasado
+  // aparte: es la pantalla de siempre mirando otro día. El mapeo id→vista vive
+  // acá porque App es la raíz de composición (igual que `tarjetas`/`editores`).
+  const abrirModuloEnFecha = (id, fecha) => {
+    setFechaFoco(fecha)
+    if (id === 'gym') setVista('gymHistory')
+    else if (id === 'nutricion') setVista('nutricion')
   }
 
   const finalizada = (nuevosPRs) => {
@@ -133,21 +162,24 @@ export default function App() {
 
       {vista === 'hoy' && <Hoy tarjetas={tarjetas} onIrAjustes={() => setVista('settings')} />}
       {vista === 'gym' && <Home rutina={rutina} onSelectDia={seleccionarDia} onSalir={() => irA('hoy')} />}
-      {vista === 'nutricion' && <Nutricion onSalir={() => irA('hoy')} />}
-      {vista === 'session' && diaKey && (
-        <Session rutina={rutina} diaKey={diaKey} onSalir={() => setVista('gym')} onFinalizada={finalizada} />
+      {/* `key` fuerza remontar al cambiar de fecha: la fecha inicial se lee en
+          el useState de Nutricion y si no, abrir otro día no la movería. */}
+      {vista === 'nutricion' && (
+        <Nutricion
+          key={fechaFoco || 'hoy'}
+          fechaInicial={fechaFoco}
+          onSalir={() => (fechaFoco ? irA('history') : irA('hoy'))}
+        />
       )}
-      {/* Historial hoy es TODO del gym (lee sus sesiones directo). Con gym
-          apagado no queda sección que mostrar: mejor decirlo que fingir. */}
-      {vista === 'history' &&
-        (moduloActivo('gym') ? (
-          <History onSalir={() => irA('hoy')} />
-        ) : (
-          <Vacio
-            mensaje="El historial vive en el módulo de entrenamiento, que está apagado. Tus sesiones siguen guardadas."
-            onAjustes={() => setVista('settings')}
-          />
-        ))}
+      {vista === 'session' && diaKey && (
+        <Session rutina={rutina} diaKey={diaKey} timer={timer} onSalir={() => setVista('gym')} onFinalizada={finalizada} />
+      )}
+      {/* Historial cruzado: itera el registro y enruta a cada módulo. Ya no es
+          "el historial del gym": el pasado es un horizonte, no un módulo. */}
+      {vista === 'history' && (
+        <Historial onAbrirModulo={abrirModuloEnFecha} onIrAjustes={() => setVista('settings')} />
+      )}
+      {vista === 'gymHistory' && <History fecha={fechaFoco} onSalir={() => irA('history')} />}
       {vista === 'report' && <Report onSalir={() => irA('hoy')} />}
       {vista === 'routine' && <Routine rutina={rutina} onChange={setRutina} onSalir={() => setVista('settings')} />}
       {vista === 'perfil' && <Perfil onSalir={() => setVista('settings')} />}
@@ -165,6 +197,11 @@ export default function App() {
       )}
 
       {!SIN_BARRA.includes(vista) && <BottomNav vista={vista} onIr={irA} />}
+
+      {/* Cronómetro de descanso: a nivel de app, así sobrevive a navegar entre
+          pantallas. Con el gym apagado no se muestra (y el efecto de arriba ya
+          lo detuvo, así que tampoco queda corriendo). */}
+      {gymActivo && <RestTimer timer={timer} />}
     </div>
   )
 }

@@ -9,8 +9,10 @@ function mmss(seg) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-export default function RestTimer({ timer, ejercicioNombre }) {
-  const { activo, pausado, restante, total, pausar, reanudar, sumar, detener } = timer
+// El nombre del ejercicio viaja DENTRO del cronómetro: el panel se ve desde
+// cualquier pantalla, así que no puede depender del estado local de Session.
+export default function RestTimer({ timer }) {
+  const { activo, pausado, restante, total, etiqueta, pausar, reanudar, sumar, detener } = timer
   if (!activo) return null
 
   const progreso = total > 0 ? restante / total : 0
@@ -56,9 +58,9 @@ export default function RestTimer({ timer, ejercicioNombre }) {
             <p className={`mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide ${terminado ? 'text-contraste/90' : 'text-marca'}`}>
               <IconClock className="h-4 w-4" /> Descanso
             </p>
-            {ejercicioNombre && (
+            {etiqueta && (
               <p className={`mb-3 line-clamp-1 text-sm font-medium ${terminado ? 'text-contraste' : 'text-texto-soft'}`}>
-                {ejercicioNombre}
+                {etiqueta}
               </p>
             )}
             <div className="grid grid-cols-2 gap-2">

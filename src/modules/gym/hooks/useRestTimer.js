@@ -74,11 +74,19 @@ function useWakeLock(activo) {
   }, [activo])
 }
 
+// El descanso es parte del ENTRENAMIENTO, no de una pantalla: por eso este hook
+// vive en App y no en Session. Si vive en la pantalla, navegar la desmonta, el
+// cleanup mata el intervalo y el descanso desaparece a mitad del entrenamiento.
+// La pantalla ARRANCA el descanso; no lo CONTIENE.
 export function useRestTimer() {
   const [activo, setActivo] = useState(false)
   const [pausado, setPausado] = useState(false)
   const [restante, setRestante] = useState(0)
   const [total, setTotal] = useState(0)
+  // Qué ejercicio arrancó este descanso. Lo carga el cronómetro y no la pantalla:
+  // el panel sigue visible desde Historial o Ajustes, donde no hay ningún
+  // ejercicio "activo" del que leerlo.
+  const [etiqueta, setEtiqueta] = useState('')
   const finRef = useRef(0) // timestamp de fin (ms)
   const intervalRef = useRef(null)
 
@@ -117,12 +125,13 @@ export function useRestTimer() {
   }, [dispararFin])
 
   const iniciar = useCallback(
-    (segundos) => {
+    (segundos, nombre = '') => {
       limpiar()
       const dur = Math.max(1, Math.round(segundos))
       finRef.current = Date.now() + dur * 1000
       setTotal(dur)
       setRestante(dur)
+      setEtiqueta(nombre)
       setActivo(true)
       setPausado(false)
       intervalRef.current = setInterval(tick, 250)
@@ -152,5 +161,5 @@ export function useRestTimer() {
 
   useEffect(() => () => limpiar(), [limpiar])
 
-  return { activo, pausado, restante, total, iniciar, pausar, reanudar, sumar, detener }
+  return { activo, pausado, restante, total, etiqueta, iniciar, pausar, reanudar, sumar, detener }
 }

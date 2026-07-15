@@ -1,12 +1,14 @@
-// Historial: sesiones por fecha + evolución de peso/reps por ejercicio + PRs.
-import React, { useMemo, useRef, useState } from 'react'
+// Historial DEL GYM: sesiones por fecha + evolución de peso/reps + PRs.
+// Se abre desde el Historial cruzado (core/screens/Historial.jsx), que puede
+// pedir una fecha concreta para desplegarla al entrar.
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import LineChart from '../components/LineChart.jsx'
 import Calendar from '../components/Calendar.jsx'
 import { getSessions, getPRs, deleteSession } from '../lib/storage.js'
 import { fmtLargo, fmtCorto, nombreDiaSemana } from '../../../core/lib/dates.js'
 import { IconChevronLeft, IconChevronDown, IconTrend, IconTrophy, IconTrash, IconRun } from '../../../core/components/icons.jsx'
 
-export default function History({ onSalir }) {
+export default function History({ fecha, onSalir }) {
   const [sessions, setSessions] = useState(() => [...getSessions()].reverse()) // más reciente primero
   const prs = getPRs()
   const [ejSel, setEjSel] = useState('')
@@ -46,6 +48,12 @@ export default function History({ onSalir }) {
     el.open = true
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
+
+  // Al entrar desde el Historial cruzado con una fecha, se abre esa sesión.
+  // Va en un efecto porque los refs recién existen después del primer render.
+  useEffect(() => {
+    if (fecha) irASesion(fecha)
+  }, [fecha])
 
   return (
     <div className="animate-in space-y-5 p-4 pb-24">

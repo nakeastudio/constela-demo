@@ -6,8 +6,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import ExerciseCard from '../components/ExerciseCard.jsx'
 import CardioCard from '../components/CardioCard.jsx'
-import RestTimer from '../components/RestTimer.jsx'
-import { useRestTimer } from '../hooks/useRestTimer.js'
 import { crearSesion, ultimaSesionSets } from '../lib/session.js'
 import {
   getActiveSession,
@@ -21,10 +19,10 @@ import { hoyISO } from '../../../core/lib/dates.js'
 import { alternarItem, ahoraISO } from '../../../core/lib/dia.js'
 import { IconChevronLeft, IconFlame, IconNote, IconCheck } from '../../../core/components/icons.jsx'
 
-export default function Session({ rutina, diaKey, onSalir, onFinalizada }) {
+// `timer` llega desde App: el descanso sobrevive a salir de esta pantalla.
+// Session lo ARRANCA y lo detiene al finalizar, pero no es su dueña.
+export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada }) {
   const dia = rutina[diaKey]
-  const timer = useRestTimer()
-  const [ejercicioActivo, setEjercicioActivo] = useState('')
   const prs = useRef(getPRs())
   // Sets de la última vez por ejercicio (columna "Anterior" estilo Hevy)
   const anteriores = useRef(
@@ -69,11 +67,10 @@ export default function Session({ rutina, diaKey, onSalir, onFinalizada }) {
         const sets = e.sets.map((s, j) => (j === setIdx ? alternarItem(s) : s))
         return { ...e, sets }
       })
-      // Si la estamos completando (no desmarcando) → descanso automático
-      if (!yaHecha) {
-        timer.iniciar(ej.descanso)
-        setEjercicioActivo(ej.nombre)
-      }
+      // Si la estamos completando (no desmarcando) → descanso automático.
+      // El nombre del ejercicio va con el cronómetro: el panel se ve desde otras
+      // pantallas, donde no hay "ejercicio activo" que consultar.
+      if (!yaHecha) timer.iniciar(ej.descanso, ej.nombre)
       return { ...prev, ejercicios }
     })
   }
@@ -224,9 +221,7 @@ export default function Session({ rutina, diaKey, onSalir, onFinalizada }) {
           <IconCheck className="h-6 w-6" /> Finalizar entrenamiento
         </button>
       </div>
-
-      {/* Cronómetro de descanso (overlay fijo) */}
-      <RestTimer timer={timer} ejercicioNombre={ejercicioActivo} />
+      {/* El panel del cronómetro lo renderiza App: sigue visible al navegar. */}
     </div>
   )
 }

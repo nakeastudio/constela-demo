@@ -24,11 +24,46 @@
 // otro día, el registro se mueve de día. Por eso los ids de sesión son opacos
 // (ver modules/gym/lib/session.js): un id derivado de la fecha se rompería.
 
-import { toISO } from './dates.js'
-import { modulos } from './modulos.js'
+import { toISO, fromISO } from './dates.js'
+import { modulosActivos } from './modulos.js'
 
 export function ahoraISO() {
   return new Date().toISOString()
+}
+
+// Marcar algo del lunes, un miércoles, no puede sellar el miércoles: el día del
+// registro es el día que se está mirando. La HORA del reloj se conserva como
+// suposición (casi siempre se registra en el momento) y queda editable; el DÍA
+// no se adivina nunca.
+export function ahoraEnFecha(fechaISO) {
+  const ahora = new Date()
+  if (fechaISO === toISO(ahora)) return ahora.toISOString()
+  const d = fromISO(fechaISO)
+  d.setHours(ahora.getHours(), ahora.getMinutes(), 0, 0)
+  return d.toISOString()
+}
+
+// "18:30" para un <input type="time">, o '' si no hay hora.
+// Devolver '' (y no "Invalid Date") es lo honesto: los registros anteriores a
+// esta convención tienen `registradoEn: null` y el input los muestra vacío.
+export function horaDe(registradoEn) {
+  if (!registradoEn) return ''
+  const d = new Date(registradoEn)
+  if (isNaN(d.getTime())) return ''
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+// Cambia SOLO la hora, conservando el día del registro. Si no había hora
+// (registro viejo), el día lo aporta `fechaISO` — el día del registro, no hoy.
+// Vaciar el campo devuelve null: "sin hora" es un estado válido, no un error.
+export function conHora(registradoEn, hhmm, fechaISO) {
+  if (!hhmm) return null
+  const [h, m] = hhmm.split(':').map(Number)
+  if (isNaN(h) || isNaN(m)) return registradoEn || null
+  const base = registradoEn ? new Date(registradoEn) : fromISO(fechaISO)
+  if (isNaN(base.getTime())) return null
+  base.setHours(h, m, 0, 0)
+  return base.toISOString()
 }
 
 // Marca un ítem. Sin `cuando`, se asume ahora.
@@ -60,9 +95,11 @@ export function fechaDeRegistro(registradoEn) {
 
 // --- El día compuesto ---
 // { fecha, modulos: { gym: <porción>|null, nutricion: <porción>|null } }
+// Solo los módulos PRENDIDOS: un módulo apagado no aporta día ni fechas. Sus
+// datos siguen guardados; simplemente no se muestran (ver core/lib/modulos.js).
 export function getDia(fecha) {
   const porciones = {}
-  modulos().forEach((m) => {
+  modulosActivos().forEach((m) => {
     porciones[m.id] = m.diaSlice ? m.diaSlice(fecha) : null
   })
   return { fecha, modulos: porciones }
@@ -71,7 +108,7 @@ export function getDia(fecha) {
 // Todas las fechas con registro de cualquier módulo, más recientes primero.
 export function fechasConRegistro() {
   const set = new Set()
-  modulos().forEach((m) => {
+  modulosActivos().forEach((m) => {
     if (!m.fechasConRegistro) return
     m.fechasConRegistro().forEach((f) => set.add(f))
   })

@@ -155,7 +155,20 @@ export const moduloGym = {
     return sesiones.length ? { sesiones } : null
   },
 
-  fechasConRegistro: () => getSessions().map((s) => s.fecha)
+  fechasConRegistro: () => getSessions().map((s) => s.fecha),
+
+  // Una línea para el Historial. Cuenta series HECHAS, no series planificadas:
+  // lo que no se hizo no es un número que valga la pena mostrar en el pasado.
+  resumenDia: (fecha) => {
+    const sesiones = getSessions().filter((s) => s.fecha === fecha)
+    if (!sesiones.length) return null
+    const series = sesiones.reduce(
+      (a, s) => a + s.ejercicios.reduce((b, e) => b + e.sets.filter((x) => x.done).length, 0),
+      0
+    )
+    const nombres = sesiones.map((s) => (s.diaNombre || 'Sesión').replace(/^Día \d+ — /, '')).join(' · ')
+    return { detalle: `${nombres} · ${series} series` }
+  }
 
   // markdownSemana se engancha en modules/registro.js: report.js ya depende de
   // este archivo, así que importarlo acá cerraría un ciclo.
