@@ -33,9 +33,9 @@ export function modulos() {
   return registrados
 }
 
-export function modulo(id) {
-  return registrados.find((m) => m.id === id) || null
-}
+// (Había un `modulo(id)` para buscar uno suelto. Su único consumidor era
+// `importarTodo`, que se fue con el backup: se borra en vez de dejarlo muerto.
+// Si algún día hace falta, son tres líneas.)
 
 // ============================================================
 //  MÓDULOS PRENDIDOS / APAGADOS  (preferencia de la persona)

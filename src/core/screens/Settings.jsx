@@ -95,15 +95,24 @@ export default function Settings({
           </button>
         )}
 
+        {/* El costo va ANTES del botón, no debajo: sin contraseñas, salir es la
+            acción más cara de la app —la única vuelta es otro correo—, y eso hay
+            que saberlo para decidir, no después de haber decidido.
+            No es un modal ni va en rojo a propósito: no se pierde nada, así que
+            no es un peligro, es información. `confirm()` en esta app está
+            reservado para lo irreversible ("¿Borrar esta sesión? No se puede
+            deshacer"); gastarlo acá abarataría esas advertencias. Y salir es una
+            necesidad real cuando dos personas comparten el navegador. */}
+        <p className="px-1 text-xs font-medium leading-relaxed text-texto-soft">
+          No se borra nada: los datos siguen en este dispositivo. Para volver a entrar se necesita
+          un enlace nuevo por correo.
+        </p>
         <button
           onClick={onCerrarSesion}
           className="min-h-[44px] w-full rounded-xl py-2 text-sm font-semibold text-texto-soft"
         >
           Cerrar sesión
         </button>
-        <p className="px-1 text-xs font-medium leading-relaxed text-texto-soft">
-          Cerrar sesión no borra nada de este dispositivo: los datos vuelven enteros al entrar de nuevo.
-        </p>
       </div>
 
       {/* ---- Preferencias ---- */}
@@ -184,33 +193,6 @@ export default function Settings({
         </p>
       </div>
 
-      {/* ---- Backup ---- */}
-      <div className="space-y-3">
-        <h2 className="px-1 text-xs font-bold uppercase tracking-wide text-texto-soft">Backup de datos</h2>
-        <div className="rounded-2xl border border-borde/25 bg-superficie p-4 shadow-suave">
-          <div className="mb-3 flex items-center gap-3">
-            <IconChip><IconDownload className="h-5 w-5" /></IconChip>
-            <p className="text-sm font-medium text-texto-soft">
-              Exporta todo (sesiones, PRs, rutina) o importa desde otro celular.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <button
-              onClick={exportarJSON}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-completo py-3 font-bold text-contraste active:scale-95"
-            >
-              <IconDownload className="h-5 w-5" /> Exportar JSON
-            </button>
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-borde/25 py-3 font-bold text-texto active:scale-95"
-            >
-              <IconUpload className="h-5 w-5" /> Importar JSON
-            </button>
-          </div>
-          <input ref={fileRef} type="file" accept="application/json" onChange={importarJSON} className="hidden" />
-        </div>
-      </div>
 
       {/* Dónde viven los datos NO puede ser una constante: era cierto cuando
           localStorage era el único almacén y deja de serlo al iniciar sesión.

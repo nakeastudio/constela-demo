@@ -205,7 +205,7 @@ export const PLAN_INICIAL = {
     'Preparar el tupper la noche anterior',
     'La balanza miente — medite por cómo te queda la ropa',
     'Constancia > perfección — un día malo no arruina nada',
-    'Hidratación: tomá el objetivo del día, más los días de entrenamiento'
+    'Hidratación: alcanza el objetivo del día, y algo más los días de entrenamiento'
   ]
 }
 

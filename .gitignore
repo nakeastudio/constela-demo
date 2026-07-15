@@ -28,4 +28,7 @@ constela-backup-*.json
 
 # artefactos de herramientas
 .serena/
-.claude/launch.json
+
+# Worktrees de agentes: checkouts anidados completos. Sin esta línea, un
+# `git add -A` se lleva un repositorio entero dentro de un commit.
+.claude/worktrees/

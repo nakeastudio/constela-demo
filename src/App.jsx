@@ -179,9 +179,6 @@ export default function App({ sesion }) {
     }
   ].filter((e) => moduloActivo(e.id))
 
-  // Tras importar backup: recargar para refrescar todo el estado
-  const recargar = () => window.location.reload()
-
   return (
     <div className="mx-auto min-h-full max-w-md bg-fondo text-texto">
       <Toast mensaje={toast} onClose={() => setToast('')} />
@@ -222,7 +219,6 @@ export default function App({ sesion }) {
           onAcceso={() => setVista('acceso')}
           onCerrarSesion={salir}
           onSalir={() => irA('hoy')}
-          onImportado={recargar}
           onModulosChange={() => setSello((n) => n + 1)}
         />
       )}
