@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
   Download,
   Upload,
   Moon,
@@ -62,6 +63,7 @@ export const IconMinus = icono(Minus)
 export const IconChevronLeft = icono(ChevronLeft)
 export const IconChevronRight = icono(ChevronRight)
 export const IconChevronDown = icono(ChevronDown)
+export const IconChevronUp = icono(ChevronUp)
 export const IconDownload = icono(Download)
 export const IconUpload = icono(Upload)
 export const IconMoon = icono(Moon)

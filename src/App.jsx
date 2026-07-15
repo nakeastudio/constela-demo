@@ -17,6 +17,8 @@ import PlanEditor from './modules/nutricion/screens/PlanEditor.jsx'
 import Settings from './core/screens/Settings.jsx'
 import Perfil from './core/screens/Perfil.jsx'
 import BottomNav from './core/layout/BottomNav.jsx'
+import Vacio from './core/components/Vacio.jsx'
+import { moduloActivo } from './core/lib/modulos.js'
 import { useTheme } from './core/hooks/useTheme.js'
 import { getRutina } from './modules/gym/lib/storage.js'
 import { resumenHoy as resumenGym } from './modules/gym/lib/session.js'
@@ -74,8 +76,8 @@ export default function App() {
     irA('hoy')
   }
 
-  // Tarjetas de Hoy: una por módulo. Core no conoce los módulos; App, que es la
-  // raíz de composición, los une. Con dos módulos no hace falta un registro.
+  // Tarjetas de Hoy: una por módulo PRENDIDO. Core no conoce los módulos; App,
+  // que es la raíz de composición, los une y los filtra.
   const tarjetas = useMemo(() => {
     const gym = resumenGym()
     const nutri = resumenNutricion(hoyISO())
@@ -98,9 +100,29 @@ export default function App() {
         total: nutri.total,
         onAbrir: () => setVista('nutricion')
       }
-    ]
+    ].filter((t) => moduloActivo(t.id))
     // `rutina` y `sello` entran para recalcular al volver o al editar el plan.
+    // `sello` también cubre prender/apagar un módulo desde Ajustes.
   }, [rutina, sello])
+
+  // Editores que ofrece Ajustes: mismo idioma que las tarjetas de Hoy, y también
+  // filtrados. Un módulo apagado no deja editor.
+  const editores = [
+    {
+      id: 'gym',
+      titulo: 'Editar rutina',
+      detalle: 'Pesos, reps, descansos y ejercicios',
+      Icon: IconDumbbell,
+      onAbrir: () => setVista('routine')
+    },
+    {
+      id: 'nutricion',
+      titulo: 'Editar plan',
+      detalle: 'Comidas, objetivos, suplementos y carbos',
+      Icon: IconSalad,
+      onAbrir: () => setVista('plan')
+    }
+  ].filter((e) => moduloActivo(e.id))
 
   // Tras importar backup: recargar para refrescar todo el estado
   const recargar = () => window.location.reload()
@@ -109,13 +131,23 @@ export default function App() {
     <div className="mx-auto min-h-full max-w-md bg-fondo text-texto">
       <Toast mensaje={toast} onClose={() => setToast('')} />
 
-      {vista === 'hoy' && <Hoy tarjetas={tarjetas} />}
+      {vista === 'hoy' && <Hoy tarjetas={tarjetas} onIrAjustes={() => setVista('settings')} />}
       {vista === 'gym' && <Home rutina={rutina} onSelectDia={seleccionarDia} onSalir={() => irA('hoy')} />}
       {vista === 'nutricion' && <Nutricion onSalir={() => irA('hoy')} />}
       {vista === 'session' && diaKey && (
         <Session rutina={rutina} diaKey={diaKey} onSalir={() => setVista('gym')} onFinalizada={finalizada} />
       )}
-      {vista === 'history' && <History onSalir={() => irA('hoy')} />}
+      {/* Historial hoy es TODO del gym (lee sus sesiones directo). Con gym
+          apagado no queda sección que mostrar: mejor decirlo que fingir. */}
+      {vista === 'history' &&
+        (moduloActivo('gym') ? (
+          <History onSalir={() => irA('hoy')} />
+        ) : (
+          <Vacio
+            mensaje="El historial vive en el módulo de entrenamiento, que está apagado. Tus sesiones siguen guardadas."
+            onAjustes={() => setVista('settings')}
+          />
+        ))}
       {vista === 'report' && <Report onSalir={() => irA('hoy')} />}
       {vista === 'routine' && <Routine rutina={rutina} onChange={setRutina} onSalir={() => setVista('settings')} />}
       {vista === 'perfil' && <Perfil onSalir={() => setVista('settings')} />}
@@ -124,11 +156,11 @@ export default function App() {
         <Settings
           dark={dark}
           onToggleDark={toggle}
-          onEditarRutina={() => setVista('routine')}
-          onEditarPlan={() => setVista('plan')}
+          editores={editores}
           onEditarPerfil={() => setVista('perfil')}
           onSalir={() => irA('hoy')}
           onImportado={recargar}
+          onModulosChange={() => setSello((n) => n + 1)}
         />
       )}
 

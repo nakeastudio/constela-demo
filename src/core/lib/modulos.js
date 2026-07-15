@@ -6,6 +6,7 @@
 //
 // Contrato de un módulo:
 //   id                  'gym' | 'nutricion' | …
+//   nombre              cómo se llama para la persona ('Entrenamiento')
 //   exportar()          → su porción del backup
 //   importar(porcion)   ← restaura esa porción
 //   diaSlice(fecha)     → su registro de ese día, o null si no hay nada
@@ -29,6 +30,40 @@ export function modulos() {
 
 export function modulo(id) {
   return registrados.find((m) => m.id === id) || null
+}
+
+// ============================================================
+//  MÓDULOS PRENDIDOS / APAGADOS  (preferencia de la persona)
+// ============================================================
+// Apagar un módulo lo ESCONDE: no borra nada. Sus datos siguen en sus propias
+// claves, intactos, y vuelven tal cual al prenderlo. Por eso nada de esto toca
+// `exportar`/`importar`: el backup se lleva todo, esté prendido o no.
+//
+// Se guarda la lista de APAGADOS y no la de prendidos a propósito: así un módulo
+// que se registre mañana (skincare) aparece prendido solo, sin migrar las
+// preferencias ya guardadas ni tener que nombrarlo acá.
+//
+// Vive en settings (no en una constante del repo) porque es POR PERSONA: cuando
+// haya dos usuarias, cada una apaga lo suyo.
+export function modulosApagados() {
+  const off = getSettings().modulosOff
+  return Array.isArray(off) ? off : []
+}
+
+export function moduloActivo(id) {
+  return !modulosApagados().includes(id)
+}
+
+export function setModuloActivo(id, activo) {
+  const off = new Set(modulosApagados())
+  if (activo) off.delete(id)
+  else off.add(id)
+  saveSettings({ ...getSettings(), modulosOff: [...off] })
+}
+
+// Lo que la UI debe mostrar. Lo que se GUARDA sale de `registrados`, no de acá.
+export function modulosActivos() {
+  return registrados.filter((m) => moduloActivo(m.id))
 }
 
 // --- BACKUP (export / import JSON) ---
@@ -87,7 +122,9 @@ export function reporteMarkdown(isoRef) {
     L.push('')
   }
 
-  registrados.forEach((m) => {
+  // Solo los módulos prendidos: si ella apagó nutrición, el reporte que le pega
+  // a una IA no puede seguir opinando sobre nutrición.
+  modulosActivos().forEach((m) => {
     if (!m.markdownSemana) return
     L.push(m.markdownSemana(isoRef))
   })

@@ -133,6 +133,7 @@ export function actualizarPRs(session) {
 // ============================================================
 export const moduloGym = {
   id: 'gym',
+  nombre: 'Entrenamiento',
 
   exportar: () => ({
     rutina: getRutina(),

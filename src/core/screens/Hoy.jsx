@@ -10,9 +10,10 @@
 
 import React from 'react'
 import { IconChevronRight, IconCheck } from '../components/icons.jsx'
+import Vacio from '../components/Vacio.jsx'
 import { fmtLargo, nombreDiaSemana, hoyISO } from '../lib/dates.js'
 
-export default function Hoy({ tarjetas }) {
+export default function Hoy({ tarjetas, onIrAjustes }) {
   const hoy = hoyISO()
 
   return (
@@ -23,6 +24,14 @@ export default function Hoy({ tarjetas }) {
           {nombreDiaSemana(hoy)} · {fmtLargo(hoy)}
         </p>
       </header>
+
+      {/* Todos los módulos apagados: la pantalla no puede quedar muda. */}
+      {tarjetas.length === 0 && (
+        <Vacio
+          mensaje="No hay módulos prendidos. Prendé alguno en Ajustes para volver a registrar tu día."
+          onAjustes={onIrAjustes}
+        />
+      )}
 
       <div className="space-y-3">
         {tarjetas.map((t) => {

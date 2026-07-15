@@ -87,6 +87,7 @@ export function resumenHoy(fecha) {
 // ============================================================
 export const moduloNutricion = {
   id: 'nutricion',
+  nombre: 'Nutrición',
 
   exportar: () => ({
     plan: getPlan(),

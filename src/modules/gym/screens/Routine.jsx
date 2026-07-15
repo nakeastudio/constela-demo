@@ -8,7 +8,7 @@
 import React, { useState } from 'react'
 import { GRUPO_LABEL, clavesDia, siguienteClaveDia, diaVacio, cardioVacio, validarRutina } from '../data/rutina.js'
 import { saveRutina, resetRutina } from '../lib/storage.js'
-import { IconChevronLeft, IconPlus, IconTrash, IconDownload, IconUpload } from '../../../core/components/icons.jsx'
+import { IconChevronLeft, IconChevronUp, IconChevronDown, IconPlus, IconTrash, IconDownload, IconUpload } from '../../../core/components/icons.jsx'
 import Toggle from '../../../core/components/Toggle.jsx'
 
 const GRUPOS = Object.keys(GRUPO_LABEL)
@@ -56,7 +56,26 @@ export default function Routine({ rutina, onChange, onSalir }) {
   const borrarActiv = (idx) => persistir({ ...r, [diaSel]: { ...dia, activacion: dia.activacion.filter((_, i) => i !== idx) } })
 
   // ---- cardio ----
+  // Apagar el cardio lo pone en null: el día deja de tenerlo. Prenderlo vuelve a
+  // la plantilla de cardioVacio(), no al protocolo anterior — no se guarda un
+  // borrador escondido de algo que la UI dice que no existe.
   const toggleCardio = () => editarDia('cardio', dia.cardio ? null : cardioVacio())
+  const editarCardio = (campo, valor) => editarDia('cardio', { ...dia.cardio, [campo]: valor })
+
+  // ---- intervalos del cardio ----
+  // Lectura tolerante: un cardio importado puede no traer `protocolo`.
+  const intervalos = dia.cardio?.protocolo || []
+  const editarIntervalo = (idx, campo, valor) =>
+    editarCardio('protocolo', intervalos.map((t, i) => (i === idx ? { ...t, [campo]: valor } : t)))
+  const borrarIntervalo = (idx) => editarCardio('protocolo', intervalos.filter((_, i) => i !== idx))
+  const agregarIntervalo = () => editarCardio('protocolo', [...intervalos, { min: '', inclinacion: '', velocidad: '' }])
+  const moverIntervalo = (idx, delta) => {
+    const destino = idx + delta
+    if (destino < 0 || destino >= intervalos.length) return
+    const p = [...intervalos]
+    ;[p[idx], p[destino]] = [p[destino], p[idx]]
+    editarCardio('protocolo', p)
+  }
 
   // ---- días ----
   const agregarDia = () => {
@@ -200,12 +219,63 @@ export default function Routine({ rutina, onChange, onSalir }) {
           </button>
         </div>
         {dia.cardio && (
-          <input
-            value={dia.cardio.nombre}
-            onChange={(e) => editarDia('cardio', { ...dia.cardio, nombre: e.target.value })}
-            className={`mt-3 w-full text-texto ${inputBase}`}
-            placeholder="Caminata inclinada — 20 min"
-          />
+          <div className="mt-3 space-y-3">
+            <input
+              value={dia.cardio.nombre}
+              onChange={(e) => editarCardio('nombre', e.target.value)}
+              className={`w-full text-texto ${inputBase}`}
+              placeholder="Caminata inclinada — 20 min"
+            />
+
+            <p className="text-xs font-bold uppercase tracking-wide text-texto-soft">Protocolo</p>
+            {intervalos.length === 0 && <p className="text-sm text-texto-soft">Sin intervalos.</p>}
+
+            {intervalos.map((t, i) => (
+              <div key={i} className="space-y-2 rounded-xl bg-fondo p-3">
+                <div className="grid grid-cols-3 gap-2">
+                  <label className="text-[11px] font-medium text-texto-soft">
+                    Min
+                    <input value={t.min ?? ''} onChange={(e) => editarIntervalo(i, 'min', e.target.value)} placeholder="0-5" className={`mt-0.5 w-full text-texto ${inputBase}`} />
+                  </label>
+                  <label className="text-[11px] font-medium text-texto-soft">
+                    Inclinación
+                    <input value={t.inclinacion ?? ''} onChange={(e) => editarIntervalo(i, 'inclinacion', e.target.value)} placeholder="5%" className={`mt-0.5 w-full text-texto ${inputBase}`} />
+                  </label>
+                  <label className="text-[11px] font-medium text-texto-soft">
+                    Velocidad
+                    <input value={t.velocidad ?? ''} onChange={(e) => editarIntervalo(i, 'velocidad', e.target.value)} placeholder="4.0 km/h" className={`mt-0.5 w-full text-texto ${inputBase}`} />
+                  </label>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => moverIntervalo(i, -1)}
+                      disabled={i === 0}
+                      aria-label="Subir intervalo"
+                      className="flex h-11 w-11 items-center justify-center rounded-lg text-texto-soft active:bg-superficie-alta disabled:opacity-30"
+                    >
+                      <IconChevronUp className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => moverIntervalo(i, 1)}
+                      disabled={i === intervalos.length - 1}
+                      aria-label="Bajar intervalo"
+                      className="flex h-11 w-11 items-center justify-center rounded-lg text-texto-soft active:bg-superficie-alta disabled:opacity-30"
+                    >
+                      <IconChevronDown className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <button onClick={() => borrarIntervalo(i)} className="flex min-h-[44px] shrink-0 items-center gap-1 px-2 text-[11px] font-semibold text-peligro">
+                    <IconTrash className="h-4 w-4" /> Quitar
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <button onClick={agregarIntervalo} className="flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-marca/50 py-2.5 text-sm font-bold text-marca active:scale-95">
+              <IconPlus className="h-4 w-4" /> Agregar intervalo
+            </button>
+          </div>
         )}
       </div>
 
@@ -281,25 +351,29 @@ function SeccionEjercicios({ titulo, seccion, lista, onEdit, onBorrar, onAgregar
               <input type="number" value={ej.descanso} onChange={(e) => onEdit(seccion, idx, 'descanso', Number(e.target.value))} className={`mt-0.5 w-full text-texto ${inputBase}`} />
             </label>
           </div>
-          <div className="flex items-center justify-between gap-2">
-            <label className="flex items-center gap-1.5 text-[11px] font-medium text-texto-soft">
+          {/* Etiquetas ARRIBA del control (no al lado): con la etiqueta en línea,
+              Grupo + Registro + Quitar no entran en 360px y "Quitar" se salía de
+              la pantalla. Apiladas, los selects se encogen (min-w-0 flex-1) y el
+              botón conserva sus 44px. Mismo idioma que Series/Reps/Descanso. */}
+          <div className="flex items-end gap-2">
+            <label className="min-w-0 flex-1 text-[11px] font-medium text-texto-soft">
               Grupo
-              <select value={ej.grupo} onChange={(e) => onEdit(seccion, idx, 'grupo', e.target.value)} className={`text-texto ${inputBase} p-1`}>
+              <select value={ej.grupo} onChange={(e) => onEdit(seccion, idx, 'grupo', e.target.value)} className={`mt-0.5 w-full text-texto ${inputBase}`}>
                 {GRUPOS.map((g) => (
                   <option key={g} value={g}>{GRUPO_LABEL[g]}</option>
                 ))}
               </select>
             </label>
             {conTiempo && (
-              <label className="flex items-center gap-1.5 text-[11px] font-medium text-texto-soft">
+              <label className="min-w-0 flex-1 text-[11px] font-medium text-texto-soft">
                 Registro
-                <select value={ej.tipoReg || 'peso'} onChange={(e) => onEdit(seccion, idx, 'tipoReg', e.target.value)} className={`text-texto ${inputBase} p-1`}>
+                <select value={ej.tipoReg || 'peso'} onChange={(e) => onEdit(seccion, idx, 'tipoReg', e.target.value)} className={`mt-0.5 w-full text-texto ${inputBase}`}>
                   <option value="peso">Peso/Reps</option>
                   <option value="tiempo">Tiempo (seg)</option>
                 </select>
               </label>
             )}
-            <button onClick={() => onBorrar(seccion, idx)} className="-mx-2 flex min-h-[44px] shrink-0 items-center gap-1 px-2 text-[11px] font-semibold text-peligro">
+            <button onClick={() => onBorrar(seccion, idx)} className="flex min-h-[44px] shrink-0 items-center gap-1 px-2 text-[11px] font-semibold text-peligro">
               <IconTrash className="h-4 w-4" /> Quitar
             </button>
           </div>

@@ -10,7 +10,7 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { generarReporte } from '../lib/report.js'
 import { generarReporte as generarReporteNutricion } from '../../nutricion/lib/report.js'
-import { reporteMarkdown } from '../../../core/lib/modulos.js'
+import { reporteMarkdown, moduloActivo } from '../../../core/lib/modulos.js'
 import { fmtLargo, fmtCorto, hoyISO, fromISO, toISO, nombreDiaSemana } from '../../../core/lib/dates.js'
 import { getSettings, saveSettings } from '../../../core/lib/storage.js'
 import { IconChevronLeft, IconChevronRight, IconTrophy, IconRun, IconNote, IconDownload, IconWater, IconPill, IconMeal, IconCheck } from '../../../core/components/icons.jsx'
@@ -36,6 +36,10 @@ function Flecha({ t }) {
 }
 
 export default function Report({ onSalir }) {
+  // Un módulo apagado no aporta su sección. Se leen al renderizar (no en estado)
+  // porque volver al Reporte re-monta la pantalla.
+  const gymActivo = moduloActivo('gym')
+  const nutricionActiva = moduloActivo('nutricion')
   const [refIso, setRefIso] = useState(hoyISO())
   const reporte = useMemo(() => generarReporte(refIso), [refIso])
   const nutri = useMemo(() => generarReporteNutricion(refIso), [refIso])
@@ -127,7 +131,13 @@ export default function Report({ onSalir }) {
           </p>
         </div>
 
-        {!reporte.hayDatos ? (
+        {!gymActivo && !nutricionActiva && (
+          <p className="py-8 text-center text-sm text-texto-soft">
+            No hay módulos prendidos. Prendé alguno en Ajustes para ver tu semana.
+          </p>
+        )}
+
+        {gymActivo && (!reporte.hayDatos ? (
           <p className="py-8 text-center text-sm text-texto-soft">Sin entrenamientos registrados esta semana.</p>
         ) : (
           <>
@@ -228,9 +238,10 @@ export default function Report({ onSalir }) {
               </p>
             </section>
           </>
-        )}
+        ))}
 
           {/* ---- Nutrición ---- */}
+          {nutricionActiva && (
           <section>
             <h3 className="mb-2 flex items-center gap-1.5 text-sm font-bold uppercase tracking-wide text-texto-soft">
               <IconMeal className="h-4 w-4" /> Nutrición
@@ -282,6 +293,7 @@ export default function Report({ onSalir }) {
               </div>
             )}
           </section>
+          )}
       </div>
       {/* ====== FIN BLOQUE CAPTURABLE ====== */}
 

@@ -1,13 +1,12 @@
-// Ajustes: modo oscuro, backup (export/import JSON), editar rutina.
-import React, { useRef } from 'react'
-import { exportarTodo, importarTodo } from '../lib/modulos.js'
+// Ajustes: modo oscuro, módulos prendidos/apagados, backup (export/import JSON)
+// y los editores de cada módulo.
+import React, { useRef, useState } from 'react'
+import { exportarTodo, importarTodo, modulos, moduloActivo, setModuloActivo } from '../lib/modulos.js'
 import {
   IconChevronLeft,
   IconChevronRight,
   IconMoon,
   IconSun,
-  IconDumbbell,
-  IconSalad,
   IconUser,
   IconDownload,
   IconUpload
@@ -23,8 +22,18 @@ function IconChip({ children }) {
   )
 }
 
-export default function Settings({ dark, onToggleDark, onEditarRutina, onEditarPlan, onEditarPerfil, onSalir, onImportado }) {
+export default function Settings({ dark, onToggleDark, editores, onEditarPerfil, onSalir, onImportado, onModulosChange }) {
   const fileRef = useRef(null)
+  // La lista sale del REGISTRO, no de una constante: el día que skincare se
+  // registre, su interruptor aparece solo. Un interruptor que no prende nada
+  // sería mentirle a quien lo toca.
+  const [apagados, setApagados] = useState(() => modulos().filter((m) => !moduloActivo(m.id)).map((m) => m.id))
+
+  const alternarModulo = (id) => {
+    setModuloActivo(id, apagados.includes(id))
+    setApagados(modulos().filter((m) => !moduloActivo(m.id)).map((m) => m.id))
+    onModulosChange()
+  }
 
   // Descarga todos los datos como JSON (backup)
   const exportarJSON = () => {
@@ -100,31 +109,50 @@ export default function Settings({ dark, onToggleDark, onEditarRutina, onEditarP
           <IconChevronRight className="h-5 w-5 shrink-0 text-texto-soft" />
         </button>
 
-        {/* Editar rutina */}
-        <button
-          onClick={onEditarRutina}
-          className="flex w-full items-center gap-3 rounded-2xl border border-borde/25 bg-superficie p-3.5 shadow-suave active:scale-[0.99]"
-        >
-          <IconChip><IconDumbbell className="h-5 w-5" /></IconChip>
-          <div className="flex-1 text-left">
-            <p className="font-bold tracking-tight text-texto">Editar rutina</p>
-            <p className="text-xs font-medium text-texto-soft">Pesos, reps, descansos y ejercicios</p>
-          </div>
-          <IconChevronRight className="h-5 w-5 shrink-0 text-texto-soft" />
-        </button>
+        {/* Editores de cada módulo. Los arma App (la raíz de composición) y ya
+            vienen filtrados: un módulo apagado no deja editor acá. */}
+        {editores.map((e) => (
+          <button
+            key={e.id}
+            onClick={e.onAbrir}
+            className="flex w-full items-center gap-3 rounded-2xl border border-borde/25 bg-superficie p-3.5 shadow-suave active:scale-[0.99]"
+          >
+            <IconChip><e.Icon className="h-5 w-5" /></IconChip>
+            <div className="flex-1 text-left">
+              <p className="font-bold tracking-tight text-texto">{e.titulo}</p>
+              <p className="text-xs font-medium text-texto-soft">{e.detalle}</p>
+            </div>
+            <IconChevronRight className="h-5 w-5 shrink-0 text-texto-soft" />
+          </button>
+        ))}
+      </div>
 
-        {/* Editar plan */}
-        <button
-          onClick={onEditarPlan}
-          className="flex w-full items-center gap-3 rounded-2xl border border-borde/25 bg-superficie p-3.5 shadow-suave active:scale-[0.99]"
-        >
-          <IconChip><IconSalad className="h-5 w-5" /></IconChip>
-          <div className="flex-1 text-left">
-            <p className="font-bold tracking-tight text-texto">Editar plan</p>
-            <p className="text-xs font-medium text-texto-soft">Comidas, objetivos, suplementos y carbos</p>
-          </div>
-          <IconChevronRight className="h-5 w-5 shrink-0 text-texto-soft" />
-        </button>
+      {/* ---- Módulos ---- */}
+      <div className="space-y-3">
+        <h2 className="px-1 text-xs font-bold uppercase tracking-wide text-texto-soft">Módulos</h2>
+        {modulos().map((m) => {
+          const activo = !apagados.includes(m.id)
+          return (
+            <button
+              key={m.id}
+              onClick={() => alternarModulo(m.id)}
+              role="switch"
+              aria-checked={activo}
+              className="flex w-full items-center gap-3 rounded-2xl border border-borde/25 bg-superficie p-3.5 shadow-suave transition-transform active:scale-[0.99]"
+            >
+              <div className="flex-1 text-left">
+                <p className="font-bold tracking-tight text-texto">{m.nombre}</p>
+                <p className="text-xs font-medium text-texto-soft">
+                  {activo ? 'Se muestra en Hoy, Reporte e Historial' : 'Escondido · tus datos siguen guardados'}
+                </p>
+              </div>
+              <Toggle checked={activo} />
+            </button>
+          )
+        })}
+        <p className="px-1 text-xs font-medium text-texto-soft">
+          Apagar un módulo solo lo esconde. Nada se borra: al prenderlo vuelve tal cual estaba.
+        </p>
       </div>
 
       {/* ---- Backup ---- */}
