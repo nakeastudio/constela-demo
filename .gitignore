@@ -1,0 +1,27 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+.vite
+
+# --- secretos / entorno ---
+# NUNCA commitear. El repo es publico.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.supabase/
+
+# test artifacts
+.playwright-mcp
+playwright-report
+test-results
+
+# screenshots sueltos de pruebas manuales
+toggle_*.png
+
+# datos personales (backups exportados desde Ajustes)
+*.backup.json
+constela-backup-*.json

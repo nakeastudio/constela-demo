@@ -1,0 +1,167 @@
+/* Geist (variable, self-hosted → funciona offline en la PWA) */
+@import '@fontsource-variable/geist';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   TOKENS — Constela
+   Dark-first: los valores base son el tema oscuro. El tema claro
+   se declara como override en `html:not(.dark)`.
+   Formato "R G B" para que Tailwind pueda aplicar alpha (bg-marca/15).
+   ============================================================ */
+:root {
+  /* Superficies */
+  --fondo: 15 15 18; /* #0F0F12 */
+  --superficie: 23 23 28; /* #17171C */
+  --superficie-alta: 35 35 41; /* #232329 */
+
+  /* Texto */
+  --texto: 244 244 246; /* #F4F4F6 */
+  --texto-soft: 160 160 174; /* #A0A0AE */
+  --contraste: 15 15 18; /* tinta sobre rellenos de marca/completo */
+
+  /* Bordes — nunca texto: no llega a 4.5:1 sobre el fondo */
+  --borde: 134 98 110; /* #86626E smoky rose */
+
+  /* Acentos */
+  --marca: 52 209 191; /* #34D1BF turquesa */
+  --completo: 52 209 191; /* #34D1BF turquesa */
+  --acento: 232 101 127; /* #E8657F magenta legible */
+  --acento-fuerte: 209 52 91; /* #D1345B magenta saturado (rellenos) */
+  --cardio: 143 162 237; /* #8FA2ED azure legible */
+  --cardio-fuerte: 52 84 209; /* #3454D1 azure saturado (rellenos) */
+
+  /* Tinta sobre los rellenos `-fuerte`. Los `-fuerte` NO cambian con el tema
+     (son medios-oscuros en ambos), así que `contraste` — que sí cambia — no
+     les sirve: en oscuro daría tinta oscura sobre relleno oscuro (3.97:1).
+     Blanco fijo sobre #D1345B = 4.82:1 (AA) en ambos temas. */
+  --contraste-fuerte: 255 255 255; /* #FFFFFF */
+
+  /* Destructivo. Separado de `acento` a propósito: un récord y "borrar para
+     siempre" no pueden ser el mismo color. #FF6A4D / superficie = 6.31:1 (AA). */
+  --peligro: 255 106 77; /* #FF6A4D rojo-naranja */
+
+  /* Tintes de categoría de comida (nutrición).
+     Los cuatro son claros y NO cambian con el tema — son los hexes elegidos.
+     Por eso su tinta tampoco cambia: `tinte-ink` es oscuro en ambos temas.
+     - Tema claro: el pastel es relleno y `tinte-ink` va encima (9.28–16.85:1).
+     - Tema oscuro: un relleno pastel sería un bloque blanco que rompe el
+       dark-first, así que el pastel va con alpha (/10–/15) como tinte y a
+       fuerza completa como tinta de la etiqueta (9.95–18.06:1 sobre el fondo). */
+  --tinte-agua: 222 255 252; /* #DEFFFC frozen water */
+  --tinte-lavanda: 226 228 246; /* #E2E4F6 lavender */
+  --tinte-cardo: 231 200 221; /* #E7C8DD thistle */
+  --tinte-orquidea: 219 175 193; /* #DBAFC1 pink orchid */
+  --tinte-ink: 23 23 28; /* #17171C tinta sobre relleno pastel */
+}
+
+/* Tema claro */
+html:not(.dark) {
+  --fondo: 250 250 251; /* #FAFAFB */
+  --superficie: 255 255 255; /* #FFFFFF */
+  --superficie-alta: 241 241 244; /* #F1F1F4 */
+
+  --texto: 23 23 28; /* #17171C */
+  --texto-soft: 90 90 104; /* #5A5A68 */
+  --contraste: 255 255 255;
+
+  --borde: 134 98 110; /* #86626E */
+
+  --marca: 14 124 111; /* #0E7C6F turquesa oscurecido para legibilidad */
+  --completo: 14 124 111; /* #0E7C6F */
+  --acento: 176 42 76; /* #B02A4C */
+  --acento-fuerte: 209 52 91; /* #D1345B */
+  --cardio: 42 68 168; /* #2A44A8 */
+  --cardio-fuerte: 52 84 209; /* #3454D1 */
+
+  /* Igual que en oscuro: los rellenos `-fuerte` no cambian, su tinta tampoco. */
+  --contraste-fuerte: 255 255 255; /* #FFFFFF */
+
+  /* #C2410C / superficie = 5.18:1, / fondo = 4.96:1 (AA). */
+  --peligro: 194 65 12; /* #C2410C rojo-naranja oscurecido */
+}
+
+/* Reset suave + base mobile-first */
+:root {
+  -webkit-tap-highlight-color: transparent;
+  color-scheme: dark;
+}
+html:not(.dark) {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: rgb(var(--fondo));
+  font-family: 'Geist Variable', Geist, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Respeta el notch / safe areas del celular */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* Foco por teclado: un solo anillo, en turquesa, en vez del default naranja
+   del navegador (que no pertenece a la paleta). Solo aparece con :focus-visible,
+   así que no molesta al tocar con el dedo. */
+:focus-visible {
+  outline: 2px solid rgb(var(--marca));
+  outline-offset: 2px;
+}
+
+/* Inputs numéricos sin las flechitas feas del navegador */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+/* Animación de entrada para vistas y modales */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-in {
+  animation: fadeInUp 0.18s ease-out;
+}
+
+@keyframes pulseRing {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+.animate-pulse-ring {
+  animation: pulseRing 1s ease-in-out infinite;
+}
+
+/* Respeta la preferencia de movimiento reducido del sistema. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
