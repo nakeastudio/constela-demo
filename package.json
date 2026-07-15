@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Tracker personal de hábitos (gimnasio y nutrición) — mobile-first PWA",
+  "description": "Tracker personal de h\u00e1bitos (gimnasio y nutrici\u00f3n) \u2014 mobile-first PWA",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
+    "html2canvas": "^1.4.1",
     "lucide-react": "^1.24.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
@@ -18,7 +19,6 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
-    "html2canvas": "^1.4.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "vite": "^6.0.7",
@@ -26,7 +26,7 @@
   },
   "packageManager": "pnpm@10.28.2",
   "pnpm": {
-    "//": "esbuild es la única dep que necesita correr build script (binario de plataforma). pnpm bloquea el resto por seguridad.",
+    "//": "esbuild es la \u00fanica dep que necesita correr build script (binario de plataforma). pnpm bloquea el resto por seguridad.",
     "onlyBuiltDependencies": [
       "esbuild"
     ]

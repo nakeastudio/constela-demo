@@ -155,4 +155,7 @@ export const moduloGym = {
   },
 
   fechasConRegistro: () => getSessions().map((s) => s.fecha)
+
+  // markdownSemana se engancha en modules/registro.js: report.js ya depende de
+  // este archivo, así que importarlo acá cerraría un ciclo.
 }

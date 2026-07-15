@@ -1,11 +1,19 @@
 // ============================================================
-//  REPORTE SEMANAL  (diseñado para screenshot / exportar PNG y enviar al coach)
+//  REPORTE SEMANAL  (la semana entera: entrenamiento + nutrición)
 // ============================================================
+// Vive en el módulo gym por historia, pero muestra los dos módulos: la barra
+// es por horizonte de tiempo, y "la semana" cruza módulos igual que "hoy".
+//
+// Dos salidas: PNG (para leerlo una persona) y markdown al portapapeles (para
+// pegárselo a una IA). El markdown lo arma core/lib/modulos.js juntando lo que
+// aporta cada módulo.
 import React, { useMemo, useRef, useState } from 'react'
 import { generarReporte } from '../lib/report.js'
+import { generarReporte as generarReporteNutricion } from '../../nutricion/lib/report.js'
+import { reporteMarkdown } from '../../../core/lib/modulos.js'
 import { fmtLargo, fmtCorto, hoyISO, fromISO, toISO, nombreDiaSemana } from '../../../core/lib/dates.js'
 import { getSettings, saveSettings } from '../../../core/lib/storage.js'
-import { IconChevronLeft, IconChevronRight, IconTrophy, IconRun, IconNote, IconDownload } from '../../../core/components/icons.jsx'
+import { IconChevronLeft, IconChevronRight, IconTrophy, IconRun, IconNote, IconDownload, IconWater, IconPill, IconMeal, IconCheck } from '../../../core/components/icons.jsx'
 
 // Nota semanal para el coach (persistida por semana en settings)
 function getNotaSemana(inicio) {
@@ -30,6 +38,8 @@ function Flecha({ t }) {
 export default function Report({ onSalir }) {
   const [refIso, setRefIso] = useState(hoyISO())
   const reporte = useMemo(() => generarReporte(refIso), [refIso])
+  const nutri = useMemo(() => generarReporteNutricion(refIso), [refIso])
+  const [copiado, setCopiado] = useState('')
   const [nota, setNota] = useState(() => getNotaSemana(generarReporte(refIso).rango.inicio))
   const [exportando, setExportando] = useState(false)
   const capturaRef = useRef(null)
@@ -45,6 +55,18 @@ export default function Report({ onSalir }) {
   const onNota = (v) => {
     setNota(v)
     setNotaSemana(reporte.rango.inicio, v)
+  }
+
+  // Copia el reporte como markdown. Se arma en el momento desde lo guardado.
+  const copiarParaIA = async () => {
+    const md = reporteMarkdown(refIso)
+    try {
+      await navigator.clipboard.writeText(md)
+      setCopiado('¡Copiado!')
+    } catch {
+      setCopiado('No se pudo copiar')
+    }
+    setTimeout(() => setCopiado(''), 2000)
   }
 
   // Exporta el bloque del reporte como imagen PNG (html2canvas, carga diferida)
@@ -99,7 +121,7 @@ export default function Report({ onSalir }) {
       {/* ====== BLOQUE CAPTURABLE ====== */}
       <div ref={capturaRef} className="space-y-4 rounded-2xl bg-superficie p-4">
         <div className="border-b-2 border-marca pb-2">
-          <h2 className="text-lg font-extrabold text-marca">Reporte de entrenamiento</h2>
+          <h2 className="text-lg font-extrabold text-marca">Reporte de la semana</h2>
           <p className="text-sm text-texto-soft">
             {fmtLargo(reporte.rango.inicio)} — {fmtLargo(reporte.rango.fin)}
           </p>
@@ -207,6 +229,59 @@ export default function Report({ onSalir }) {
             </section>
           </>
         )}
+
+          {/* ---- Nutrición ---- */}
+          <section>
+            <h3 className="mb-2 flex items-center gap-1.5 text-sm font-bold uppercase tracking-wide text-texto-soft">
+              <IconMeal className="h-4 w-4" /> Nutrición
+            </h3>
+            {!nutri.hayDatos ? (
+              <p className="text-sm text-texto-soft">Sin registros de nutrición esta semana.</p>
+            ) : (
+              <div className="space-y-2">
+                {/* El promedio manda: va primero y en grande. */}
+                <div className="rounded-xl bg-fondo p-3">
+                  <p className="text-2xl font-extrabold tabular-nums text-marca">{nutri.adherenciaTotal}%</p>
+                  <p className="text-xs font-medium text-texto-soft">
+                    adherencia de la semana · {nutri.hechasTotal}/{nutri.planificadasTotal} comidas
+                  </p>
+                </div>
+
+                {nutri.adherencia.map((a) => (
+                  <div key={a.categoria} className="flex items-center gap-2">
+                    <span className="w-28 shrink-0 truncate text-xs font-semibold text-texto">{a.label}</span>
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-superficie-alta">
+                      <div className="h-full rounded-full bg-completo transition-all" style={{ width: `${a.pct}%` }} />
+                    </div>
+                    <span className="w-14 shrink-0 text-right text-xs font-bold tabular-nums text-texto-soft">
+                      {a.hechas}/{a.planificadas}
+                    </span>
+                  </div>
+                ))}
+
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  <div className="rounded-xl bg-fondo p-2 text-center">
+                    <p className="flex items-center justify-center gap-1 text-sm font-extrabold tabular-nums text-texto">
+                      <IconCheck className="h-3.5 w-3.5 text-completo" />{nutri.diasEnObjetivo}/{nutri.diasConPlan}
+                    </p>
+                    <p className="text-[10px] font-medium text-texto-soft">días completos</p>
+                  </div>
+                  <div className="rounded-xl bg-fondo p-2 text-center">
+                    <p className="flex items-center justify-center gap-1 text-sm font-extrabold tabular-nums text-texto">
+                      <IconPill className="h-3.5 w-3.5 text-marca" />{nutri.rachaSuplementos}
+                    </p>
+                    <p className="text-[10px] font-medium text-texto-soft">racha suplementos</p>
+                  </div>
+                  <div className="rounded-xl bg-fondo p-2 text-center">
+                    <p className="flex items-center justify-center gap-1 text-sm font-extrabold tabular-nums text-texto">
+                      <IconWater className="h-3.5 w-3.5 text-cardio" />{nutri.agua.promedio}L
+                    </p>
+                    <p className="text-[10px] font-medium text-texto-soft">agua promedio</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
       </div>
       {/* ====== FIN BLOQUE CAPTURABLE ====== */}
 
@@ -222,10 +297,24 @@ export default function Report({ onSalir }) {
         />
       </div>
 
+      {/* Copiar para IA: el markdown se arma con lo guardado (perfil, plan,
+          rutina y la semana), así una IA sin contexto previo puede aconsejar
+          con solo ese texto. No se llama a ninguna IA desde acá. */}
+      <button
+        onClick={copiarParaIA}
+        className="mt-4 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl bg-completo py-4 font-extrabold text-contraste shadow-flotante active:scale-95"
+      >
+        <IconNote className="h-5 w-5" />
+        {copiado || 'Copiar reporte para IA'}
+      </button>
+      <p className="mt-2 px-1 text-center text-xs font-medium leading-relaxed text-texto-soft">
+        Copia la semana como texto: perfil, plan y números exactos. Pegalo donde quieras.
+      </p>
+
       <button
         onClick={exportarPNG}
         disabled={exportando || !reporte.hayDatos}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-marca py-4 font-extrabold text-contraste shadow-flotante active:scale-95 disabled:opacity-50"
+        className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl border-2 border-borde/25 py-4 font-extrabold text-texto active:scale-95 disabled:opacity-50"
       >
         {!exportando && <IconDownload className="h-5 w-5" />}
         {exportando ? 'Generando imagen…' : 'Exportar reporte como PNG'}

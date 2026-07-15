@@ -105,6 +105,8 @@ export const moduloNutricion = {
   },
 
   fechasConRegistro: () => Object.keys(getDias())
+
+  // markdownSemana se engancha en modules/registro.js (ver gym/lib/storage.js).
 }
 
 // Re-export por comodidad de las pantallas.

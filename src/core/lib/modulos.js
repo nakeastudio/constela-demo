@@ -10,8 +10,11 @@
 //   importar(porcion)   ← restaura esa porción
 //   diaSlice(fecha)     → su registro de ese día, o null si no hay nada
 //   fechasConRegistro() → fechas ISO en las que el módulo tiene algo guardado
+//   markdownSemana(iso) → (opcional) su sección del reporte para IA
 
 import { getSettings, saveSettings } from './storage.js'
+import { getPerfil, perfilCargado } from './perfil.js'
+import { fmtLargo, rangoSemana } from './dates.js'
 
 const registrados = []
 
@@ -45,6 +48,60 @@ export function exportarTodo() {
     settings: getSettings(),
     modulos: porciones
   }
+}
+
+// ============================================================
+//  REPORTE PARA IA  (markdown, al portapapeles)
+// ============================================================
+// Cada módulo aporta su sección; core solo pone el encabezado y las une.
+// Sumar skincare = implementar markdownSemana en su contrato, sin tocar esto.
+//
+// Autocontenido a propósito: una IA sin ningún contexto previo tiene que poder
+// aconsejar con SOLO este texto. Por eso van el perfil y el plan/rutina
+// vigentes, no únicamente los deltas de la semana.
+//
+// Todo sale de lo guardado en el dispositivo. Ninguna constante del repo entra
+// acá, y el texto no sale del dispositivo salvo que ella lo pegue en algún lado.
+export function reporteMarkdown(isoRef) {
+  const { inicio, fin } = rangoSemana(isoRef)
+  const p = getPerfil()
+  const L = []
+
+  L.push(`# Reporte semanal · ${fmtLargo(inicio)} — ${fmtLargo(fin)}`)
+  L.push('')
+
+  // Perfil: la línea base contra la que comparar.
+  if (perfilCargado(p)) {
+    L.push('## Perfil')
+    L.push('')
+    if (p.nombre) L.push(`- Nombre: ${p.nombre}`)
+    if (p.edad) L.push(`- Edad: ${p.edad} años`)
+    if (p.peso) L.push(`- Peso: ${p.peso} kg`)
+    if (p.altura) L.push(`- Altura: ${p.altura} cm`)
+    if (p.objetivo) L.push(`- Objetivo: ${p.objetivo}`)
+    L.push('')
+  } else {
+    L.push('## Perfil')
+    L.push('')
+    L.push('_Sin datos de perfil cargados._')
+    L.push('')
+  }
+
+  registrados.forEach((m) => {
+    if (!m.markdownSemana) return
+    L.push(m.markdownSemana(isoRef))
+  })
+
+  // El marco: el promedio manda, un día no es un veredicto.
+  L.push('---')
+  L.push('')
+  L.push(
+    'Nota de lectura: lo que importa es el promedio de la semana, no un día suelto. ' +
+      'Un día flojo es contexto, no un fracaso. Al sugerir cambios, priorizá la constancia ' +
+      'sostenible por encima de la perfección.'
+  )
+  L.push('')
+  return L.join('\n')
 }
 
 export function importarTodo(data) {

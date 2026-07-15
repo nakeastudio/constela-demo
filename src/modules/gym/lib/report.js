@@ -2,7 +2,7 @@
 //  GENERACIÓN DEL REPORTE SEMANAL
 // ============================================================
 
-import { getSessions } from './storage.js'
+import { getSessions, getRutina } from './storage.js'
 import { rangoSemana, rangoSemanaAnterior, enRango } from '../../../core/lib/dates.js'
 import { OBJETIVOS_VOLUMEN } from '../data/rutina.js'
 
@@ -147,4 +147,71 @@ export function generarReporte(isoRef) {
     notas,
     hayDatos: actuales.length > 0
   }
+}
+
+// --- Markdown para llevarle el reporte a una IA ---
+// Autocontenido: incluye la RUTINA vigente además de los deltas, porque una IA
+// sin contexto previo no puede aconsejar sobre números sueltos. Todo sale de
+// los datos guardados; nada de constantes del repo.
+export function markdownSemana(isoRef) {
+  const r = generarReporte(isoRef)
+  const rutina = getRutina()
+  const L = []
+
+  L.push('## Entrenamiento')
+  L.push('')
+
+  if (!r.hayDatos) {
+    L.push('_Sin entrenamientos registrados esta semana._')
+    L.push('')
+  } else {
+    L.push(`**Días entrenados:** ${r.diasEntrenados.length}`)
+    r.diasEntrenados.forEach((d) => L.push(`- ${d.fecha} · ${d.nombre}`))
+    L.push('')
+
+    L.push('### Volumen por grupo (series completadas vs objetivo)')
+    L.push('')
+    L.push('| Grupo | Series | Objetivo | Estado |')
+    L.push('| --- | ---: | :---: | --- |')
+    r.volumen.forEach((v) => {
+      const estado = v.series < v.min ? 'por debajo' : v.series > v.max ? 'por encima' : 'en rango'
+      L.push(`| ${v.label} | ${v.series} | ${v.min}-${v.max} | ${estado} |`)
+    })
+    L.push('')
+
+    if (r.prs.length) {
+      L.push('### Récords de la semana')
+      L.push('')
+      r.prs.forEach((p) => L.push(`- ${p.nombre}: ${p.peso}kg · ${p.reps} reps (${p.tipo})`))
+      L.push('')
+    }
+
+    L.push('### Ejercicios vs semana anterior')
+    L.push('')
+    L.push('| Ejercicio | Mejor peso | Mejor reps | Peso | Reps |')
+    L.push('| --- | ---: | ---: | :---: | :---: |')
+    r.ejercicios.forEach((e) => {
+      const unidad = e.tipoReg === 'tiempo' ? 's' : 'kg'
+      L.push(`| ${e.nombre} | ${e.mejorPeso}${unidad === 's' ? '' : 'kg'} | ${e.mejorReps}${unidad === 's' ? 's' : ''} | ${e.tendenciaPeso.flecha} | ${e.tendenciaReps.flecha} |`)
+    })
+    L.push('')
+
+    L.push(r.cardio.length ? `**Cardio:** ${r.cardio.length} sesión(es) — ${r.cardio.map((c) => `${c.fecha} (${c.nombre})`).join(' · ')}` : '**Cardio:** ninguno esta semana')
+    L.push('')
+
+    if (r.notas) {
+      L.push(`**Cómo me sentí:** ${r.notas}`)
+      L.push('')
+    }
+  }
+
+  // Contexto de la rutina: sin esto, una IA no sabe qué se suponía que pasara.
+  L.push('### Rutina vigente (contexto)')
+  L.push('')
+  Object.values(rutina).forEach((d) => {
+    const ejs = (d.ejercicios || []).map((e) => `${e.nombre} ${e.series}×${e.reps}`).join(' · ')
+    L.push(`- **${d.nombre}**${ejs ? `: ${ejs}` : ''}${d.cardio ? ` · cardio: ${d.cardio.nombre}` : ''}`)
+  })
+  L.push('')
+  return L.join('\n')
 }
