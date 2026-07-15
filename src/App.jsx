@@ -19,8 +19,11 @@ import Nutricion from './modules/nutricion/screens/Nutricion.jsx'
 import PlanEditor from './modules/nutricion/screens/PlanEditor.jsx'
 import Settings from './core/screens/Settings.jsx'
 import Perfil from './core/screens/Perfil.jsx'
+import Acceso from './core/screens/Acceso.jsx'
 import BottomNav from './core/layout/BottomNav.jsx'
 import { moduloActivo } from './core/lib/modulos.js'
+import { supabase, cerrarSesion } from './core/lib/supabase.js'
+import { detenerSync } from './core/lib/sync.js'
 import { useTheme } from './core/hooks/useTheme.js'
 import { getRutina } from './modules/gym/lib/storage.js'
 import { resumenHoy as resumenGym } from './modules/gym/lib/session.js'
@@ -32,7 +35,7 @@ import { IconTrophy, IconDumbbell, IconSalad } from './core/components/icons.jsx
 // abiertas, la barra se esconde.
 // `gymHistory` es el historial DEL GYM: se abre desde el Historial cruzado (que
 // sí vive en la barra), igual que un tablero de módulo.
-const SIN_BARRA = ['session', 'routine', 'gym', 'nutricion', 'perfil', 'plan', 'gymHistory']
+const SIN_BARRA = ['session', 'routine', 'gym', 'nutricion', 'perfil', 'plan', 'gymHistory', 'acceso']
 
 // Toast simple para anunciar PRs al finalizar
 function Toast({ mensaje, onClose }) {
@@ -50,9 +53,13 @@ function Toast({ mensaje, onClose }) {
   )
 }
 
-export default function App() {
+export default function App({ sesion }) {
   const { dark, toggle } = useTheme()
   const [rutina, setRutina] = useState(() => getRutina())
+  // El rol sale de `perfiles`, donde RLS deja leer SOLO la fila propia. No se
+  // deriva del mail ni de nada del cliente: eso sería creerle al navegador.
+  // Ojo: esto decide qué se MUESTRA. Lo que protege `invitaciones` es RLS.
+  const [rol, setRol] = useState(null)
   const [vista, setVista] = useState('hoy')
   const [diaKey, setDiaKey] = useState(null)
   const [toast, setToast] = useState('')
@@ -73,6 +80,25 @@ export default function App() {
   useEffect(() => {
     if (!gymActivo) timer.detener()
   }, [gymActivo, timer.detener])
+
+  useEffect(() => {
+    if (!supabase || !sesion?.user) return
+    let vivo = true
+    supabase
+      .from('perfiles')
+      .select('rol')
+      .eq('user_id', sesion.user.id)
+      .maybeSingle()
+      .then(({ data }) => { if (vivo) setRol(data?.rol ?? null) })
+    return () => { vivo = false }
+  }, [sesion])
+
+  // Salir NO borra nada local: sus claves quedan bajo su namespace y vuelven
+  // enteras en el próximo login.
+  const salir = async () => {
+    detenerSync()
+    await cerrarSesion()
+  }
 
   const irA = (v) => {
     if (v === 'hoy') setSello((n) => n + 1)
@@ -183,13 +209,18 @@ export default function App() {
       {vista === 'report' && <Report onSalir={() => irA('hoy')} />}
       {vista === 'routine' && <Routine rutina={rutina} onChange={setRutina} onSalir={() => setVista('settings')} />}
       {vista === 'perfil' && <Perfil onSalir={() => setVista('settings')} />}
+      {vista === 'acceso' && <Acceso onSalir={() => setVista('settings')} />}
       {vista === 'plan' && <PlanEditor onSalir={() => setVista('settings')} />}
       {vista === 'settings' && (
         <Settings
           dark={dark}
           onToggleDark={toggle}
           editores={editores}
+          email={sesion?.user?.email}
+          esAdmin={rol === 'admin'}
           onEditarPerfil={() => setVista('perfil')}
+          onAcceso={() => setVista('acceso')}
+          onCerrarSesion={salir}
           onSalir={() => irA('hoy')}
           onImportado={recargar}
           onModulosChange={() => setSello((n) => n + 1)}

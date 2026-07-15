@@ -38,7 +38,8 @@ import {
   Coffee,
   Info,
   Salad,
-  User
+  User,
+  Users
 } from 'lucide-react'
 
 // Los sitios de uso pasan el tamaño por className (h-5 w-5, etc.).
@@ -83,3 +84,4 @@ export const IconCoffee = icono(Coffee)
 export const IconInfo = icono(Info)
 export const IconSalad = icono(Salad)
 export const IconUser = icono(User)
+export const IconUsers = icono(Users)

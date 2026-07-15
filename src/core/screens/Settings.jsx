@@ -8,10 +8,12 @@ import {
   IconMoon,
   IconSun,
   IconUser,
+  IconUsers,
   IconDownload,
   IconUpload
 } from '../components/icons.jsx'
 import Toggle from '../components/Toggle.jsx'
+import EstadoSync from '../components/EstadoSync.jsx'
 
 // Chip de icono reutilizable: cuadrado redondeado con tinte de marca.
 function IconChip({ children }) {
@@ -22,7 +24,19 @@ function IconChip({ children }) {
   )
 }
 
-export default function Settings({ dark, onToggleDark, editores, onEditarPerfil, onSalir, onImportado, onModulosChange }) {
+export default function Settings({
+  dark,
+  onToggleDark,
+  editores,
+  email,
+  esAdmin,
+  onEditarPerfil,
+  onAcceso,
+  onCerrarSesion,
+  onSalir,
+  onImportado,
+  onModulosChange
+}) {
   const fileRef = useRef(null)
   // La lista sale del REGISTRO, no de una constante: el día que skincare se
   // registre, su interruptor aparece solo. Un interruptor que no prende nada
@@ -76,6 +90,47 @@ export default function Settings({ dark, onToggleDark, editores, onEditarPerfil,
         </button>
         <h1 className="flex-1 text-2xl font-extrabold tracking-tight text-texto">Ajustes</h1>
       </header>
+
+      {/* ---- Cuenta ---- */}
+      <div className="space-y-3">
+        <h2 className="px-1 text-xs font-bold uppercase tracking-wide text-texto-soft">Cuenta</h2>
+
+        <EstadoSync />
+
+        <div className="flex items-center gap-3 rounded-2xl border border-borde/25 bg-superficie p-3.5 shadow-suave">
+          <IconChip><IconUser className="h-5 w-5" /></IconChip>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-bold tracking-tight text-texto">{email || 'Sin sesión'}</p>
+            <p className="text-xs font-medium text-texto-soft">{esAdmin ? 'Administradora' : 'Sesión iniciada'}</p>
+          </div>
+        </div>
+
+        {/* Sólo admin. Esconderlo NO es el control — lo es RLS en `invitaciones`
+            (privado.es_admin()); esto sólo evita ofrecer una puerta que no abre. */}
+        {esAdmin && (
+          <button
+            onClick={onAcceso}
+            className="flex w-full items-center gap-3 rounded-2xl border border-borde/25 bg-superficie p-3.5 shadow-suave active:scale-[0.99]"
+          >
+            <IconChip><IconUsers className="h-5 w-5" /></IconChip>
+            <div className="flex-1 text-left">
+              <p className="font-bold tracking-tight text-texto">Acceso</p>
+              <p className="text-xs font-medium text-texto-soft">Quién puede entrar a la app</p>
+            </div>
+            <IconChevronRight className="h-5 w-5 shrink-0 text-texto-soft" />
+          </button>
+        )}
+
+        <button
+          onClick={onCerrarSesion}
+          className="min-h-[44px] w-full rounded-xl py-2 text-sm font-semibold text-texto-soft"
+        >
+          Cerrar sesión
+        </button>
+        <p className="px-1 text-xs font-medium leading-relaxed text-texto-soft">
+          Cerrar sesión no borra nada de este dispositivo: los datos vuelven enteros al entrar de nuevo.
+        </p>
+      </div>
 
       {/* ---- Preferencias ---- */}
       <div className="space-y-3">

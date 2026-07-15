@@ -11,9 +11,45 @@
 
 export const PREFIJO = 'appgym:'
 
-// Arma una clave namespaceada: clave('rutina') → 'appgym:rutina'
+// ============================================================
+//  A QUIÉN PERTENECEN ESTAS CLAVES
+// ============================================================
+// Con dos personas y UN solo navegador, `appgym:sessions` a secas es una fuga:
+// si A entra, sincroniza, sale (salir NO borra nada), y después entra B, B lee
+// las mismas claves y ve el historial de salud de A.
+//
+// Por eso las claves se namespacean por usuario: `appgym:u:<uid>:sessions`.
+// La alternativa —borrar lo local al cambiar de usuario— destruiría lo que A
+// todavía no subió, y enfrentaría "no borrar al salir" con "no filtrar".
+// Namespacear da las dos cosas: no se borra nada nunca, solo se mueve el puntero.
+//
+// `usuarioActual` se fija ANTES del primer render (ver AuthGate en App.jsx):
+// las lecturas son síncronas a propósito y no pueden esperar a la sesión.
+let usuarioActual = null
+
+export function setUsuarioActual(uid) {
+  usuarioActual = uid || null
+}
+
+export function getUsuarioActual() {
+  return usuarioActual
+}
+
+// Prefijo de un usuario concreto (lo usa la reclamación del legado).
+export function prefijoDe(uid) {
+  return uid ? `${PREFIJO}u:${uid}:` : PREFIJO
+}
+
+// clave('rutina') → 'appgym:u:<uid>:rutina'  (o 'appgym:rutina' sin sesión)
 export function clave(nombre) {
-  return `${PREFIJO}${nombre}`
+  return `${prefijoDe(usuarioActual)}${nombre}`
+}
+
+// Se avisa a la capa de sync qué clave cambió. Es un callback y no un import
+// para que storage.js siga sin saber que Supabase existe.
+let alEscribir = null
+export function observarEscrituras(fn) {
+  alEscribir = fn
 }
 
 export function leer(nombre, fallback) {
@@ -27,10 +63,13 @@ export function leer(nombre, fallback) {
 
 export function escribir(nombre, valor) {
   localStorage.setItem(clave(nombre), JSON.stringify(valor))
+  // Local primero: lo de arriba ya pasó. Esto solo encola; nadie espera red.
+  if (alEscribir) alEscribir(nombre, valor)
 }
 
 export function borrar(nombre) {
   localStorage.removeItem(clave(nombre))
+  if (alEscribir) alEscribir(nombre, null)
 }
 
 // --- PREFERENCIAS DE LA APP (core: tema) ---
