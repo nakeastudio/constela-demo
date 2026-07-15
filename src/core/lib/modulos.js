@@ -1,14 +1,16 @@
 // ============================================================
-//  REGISTRO DE MÓDULOS + BACKUP
+//  REGISTRO DE MÓDULOS
 // ============================================================
 // Core no importa ningún módulo: son los módulos los que se registran acá
 // (ver src/modules/registro.js). Así, sumar skincare más adelante no toca core.
 //
+// El contrato ya no tiene `exportar`/`importar`: existían solo para el backup
+// JSON, y el backup se fue cuando la sincronización pasó a ser el respaldo real.
+// Cada módulo dice qué sube y cómo en el mapa de sync (ver modules/registro.js).
+//
 // Contrato de un módulo:
 //   id                  'gym' | 'nutricion' | …
 //   nombre              cómo se llama para la persona ('Entrenamiento')
-//   exportar()          → su porción del backup
-//   importar(porcion)   ← restaura esa porción
 //   diaSlice(fecha)     → su registro de ese día, o null si no hay nada
 //   fechasConRegistro() → fechas ISO en las que el módulo tiene algo guardado
 //   resumenDia(fecha)   → { detalle } legible para Historial, o null si no hay
@@ -69,25 +71,6 @@ export function modulosActivos() {
   return registrados.filter((m) => moduloActivo(m.id))
 }
 
-// --- BACKUP (export / import JSON) ---
-// v2: cada módulo aporta su porción bajo `modulos`. v1 (formato viejo) tenía
-// rutina/sessions/prs planos en la raíz: se sigue importando (ver abajo).
-export const VERSION_BACKUP = 2
-
-export function exportarTodo() {
-  const porciones = {}
-  registrados.forEach((m) => {
-    porciones[m.id] = m.exportar()
-  })
-  return {
-    _app: 'appgym',
-    _version: VERSION_BACKUP,
-    exportadoEn: new Date().toISOString(),
-    settings: getSettings(),
-    modulos: porciones
-  }
-}
-
 // ============================================================
 //  REPORTE PARA IA  (markdown, al portapapeles)
 // ============================================================
@@ -137,37 +120,10 @@ export function reporteMarkdown(isoRef) {
   L.push('')
   L.push(
     'Nota de lectura: lo que importa es el promedio de la semana, no un día suelto. ' +
-      'Un día flojo es contexto, no un fracaso. Al sugerir cambios, priorizá la constancia ' +
+      'Un día flojo es contexto, no un fracaso. Al sugerir cambios, prioriza la constancia ' +
       'sostenible por encima de la perfección.'
   )
   L.push('')
   return L.join('\n')
 }
 
-export function importarTodo(data) {
-  if (!data || data._app !== 'appgym') throw new Error('Archivo no válido')
-
-  if (data.settings) saveSettings(data.settings)
-
-  // --- v1: rutina / sessions / prs sueltos en la raíz, todo era del gym ---
-  // Ella tiene backups viejos con datos reales: un archivo que ya no restaura
-  // es pérdida de datos. Se traduce a la porción del módulo gym.
-  const version = Number(data._version) || 1
-  if (version < 2) {
-    const gym = modulo('gym')
-    if (gym) {
-      gym.importar({
-        rutina: data.rutina,
-        sessions: data.sessions,
-        prs: data.prs
-      })
-    }
-    return
-  }
-
-  // --- v2 en adelante ---
-  const porciones = data.modulos || {}
-  registrados.forEach((m) => {
-    if (porciones[m.id]) m.importar(porciones[m.id])
-  })
-}

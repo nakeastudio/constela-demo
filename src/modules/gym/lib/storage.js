@@ -135,19 +135,6 @@ export const moduloGym = {
   id: 'gym',
   nombre: 'Entrenamiento',
 
-  exportar: () => ({
-    rutina: getRutina(),
-    sessions: getSessions(),
-    prs: getPRs()
-  }),
-
-  importar: (porcion) => {
-    if (!porcion) return
-    if (porcion.rutina) escribir('rutina', porcion.rutina)
-    if (porcion.sessions) escribir('sessions', porcion.sessions)
-    if (porcion.prs) escribir('prs', porcion.prs)
-  },
-
   // Un día puede tener más de una sesión (ella podría entrenar dos veces), así
   // que la porción del gym es una lista, no un objeto suelto.
   diaSlice: (fecha) => {

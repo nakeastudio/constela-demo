@@ -1,16 +1,19 @@
-// Ajustes: modo oscuro, módulos prendidos/apagados, backup (export/import JSON)
-// y los editores de cada módulo.
-import React, { useRef, useState } from 'react'
-import { exportarTodo, importarTodo, modulos, moduloActivo, setModuloActivo } from '../lib/modulos.js'
+// Ajustes: cuenta y sincronización, modo oscuro, módulos prendidos/apagados y
+// los editores de cada módulo.
+//
+// Ya no hay backup JSON: existía cuando localStorage era el único almacén y la
+// exportación manual era la única red. Ahora el respaldo es la sincronización.
+// (El pegado de JSON en los editores de plan y rutina NO era backup y sigue: es
+// la vuelta de "Copiar reporte para IA".)
+import React, { useState } from 'react'
+import { modulos, moduloActivo, setModuloActivo } from '../lib/modulos.js'
 import {
   IconChevronLeft,
   IconChevronRight,
   IconMoon,
   IconSun,
   IconUser,
-  IconUsers,
-  IconDownload,
-  IconUpload
+  IconUsers
 } from '../components/icons.jsx'
 import Toggle from '../components/Toggle.jsx'
 import EstadoSync from '../components/EstadoSync.jsx'
@@ -35,10 +38,8 @@ export default function Settings({
   onAcceso,
   onCerrarSesion,
   onSalir,
-  onImportado,
   onModulosChange
 }) {
-  const fileRef = useRef(null)
   const estadoSync = useEstadoSync()
   // La lista sale del REGISTRO, no de una constante: el día que skincare se
   // registre, su interruptor aparece solo. Un interruptor que no prende nada
@@ -49,35 +50,6 @@ export default function Settings({
     setModuloActivo(id, apagados.includes(id))
     setApagados(modulos().filter((m) => !moduloActivo(m.id)).map((m) => m.id))
     onModulosChange()
-  }
-
-  // Descarga todos los datos como JSON (backup)
-  const exportarJSON = () => {
-    const data = exportarTodo()
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.download = `appgym_backup_${new Date().toISOString().slice(0, 10)}.json`
-    link.href = url
-    link.click()
-    URL.revokeObjectURL(url)
-  }
-
-  // Importa un backup JSON (reemplaza los datos actuales)
-  const importarJSON = (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      try {
-        importarTodo(JSON.parse(reader.result))
-        alert('Backup importado correctamente. Se recargará la app.')
-        onImportado()
-      } catch (err) {
-        alert('Error al importar: ' + err.message)
-      }
-    }
-    reader.readAsText(file)
   }
 
   return (

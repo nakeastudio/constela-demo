@@ -25,6 +25,9 @@ function mensaje(e) {
 export default function Acceso({ onSalir }) {
   const [invitaciones, setInvitaciones] = useState([])
   const [email, setEmail] = useState('')
+  // Por defecto entra sin poder invitar a nadie más: dar acceso y repartir
+  // acceso son dos permisos distintos, y el segundo se concede a propósito.
+  const [rol, setRol] = useState('usuario')
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
 
@@ -45,9 +48,13 @@ export default function Acceso({ onSalir }) {
     e.preventDefault()
     const limpio = email.trim().toLowerCase()
     if (!limpio) return
-    const { error: e2 } = await supabase.from('invitaciones').insert({ email: limpio, rol: 'usuaria' })
+    // `rol` es un valor de la base, no un texto de interfaz: la restricción solo
+    // acepta 'usuario' o 'admin'. Si algún día se muestra en femenino, se traduce
+    // al pintarlo; el valor guardado no cambia.
+    const { error: e2 } = await supabase.from('invitaciones').insert({ email: limpio, rol })
     if (e2) { setError(mensaje(e2)); return }
     setEmail('')
+    setRol('usuario')
     setError('')
     cargar()
   }
@@ -78,8 +85,8 @@ export default function Acceso({ onSalir }) {
         recibe un enlace la primera vez que entra.
       </p>
 
-      <form onSubmit={invitar} className="flex items-end gap-2">
-        <label className="min-w-0 flex-1 text-xs font-bold uppercase tracking-wide text-texto-soft">
+      <form onSubmit={invitar} className="space-y-3">
+        <label className="block text-xs font-bold uppercase tracking-wide text-texto-soft">
           Invitar correo
           <input
             type="email"
@@ -89,10 +96,23 @@ export default function Acceso({ onSalir }) {
             className="mt-1 min-h-[44px] w-full rounded-xl border border-borde/25 bg-superficie p-3 text-sm text-texto outline-none focus:border-marca"
           />
         </label>
+
+        <label className="block text-xs font-bold uppercase tracking-wide text-texto-soft">
+          Puede
+          <select
+            value={rol}
+            onChange={(e) => setRol(e.target.value)}
+            className="mt-1 min-h-[44px] w-full rounded-xl border border-borde/25 bg-superficie p-3 text-sm text-texto outline-none focus:border-marca"
+          >
+            <option value="usuario">Solo usar la aplicación</option>
+            <option value="admin">Usar la aplicación y dar acceso a otras personas</option>
+          </select>
+        </label>
+
         <button
           type="submit"
           disabled={!email.trim()}
-          className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl bg-marca px-3 text-sm font-bold text-contraste active:scale-95 disabled:opacity-50"
+          className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl bg-marca px-3 text-sm font-bold text-contraste active:scale-95 disabled:opacity-50"
         >
           <IconPlus className="h-4 w-4" /> Invitar
         </button>

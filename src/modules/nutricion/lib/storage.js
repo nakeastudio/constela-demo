@@ -89,17 +89,6 @@ export const moduloNutricion = {
   id: 'nutricion',
   nombre: 'Nutrición',
 
-  exportar: () => ({
-    plan: getPlan(),
-    dias: getDias()
-  }),
-
-  importar: (porcion) => {
-    if (!porcion) return
-    if (porcion.plan) escribir('plan', porcion.plan)
-    if (porcion.dias) escribir('nutricion', porcion.dias)
-  },
-
   diaSlice: (fecha) => {
     const d = getDias()[fecha]
     return d || null
