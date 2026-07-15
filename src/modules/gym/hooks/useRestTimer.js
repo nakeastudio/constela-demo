@@ -36,7 +36,42 @@ function beep() {
 }
 
 function vibrar() {
+  // iOS no implementa la Vibration API: ahí esto no hace nada y el beep queda solo.
   if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 300])
+}
+
+// Mantiene la pantalla encendida mientras corre el descanso, para que el
+// cronómetro siga en primer plano y el beep suene en el segundo exacto.
+// El sistema libera el lock al ocultar la pestaña, por eso se vuelve a pedir
+// al volver: sin eso funciona una sola vez.
+function useWakeLock(activo) {
+  const lockRef = useRef(null)
+
+  useEffect(() => {
+    if (!activo || !('wakeLock' in navigator)) return
+    let cancelado = false
+
+    const pedir = async () => {
+      try {
+        lockRef.current = await navigator.wakeLock.request('screen')
+      } catch {
+        // Sin permiso, batería baja o pestaña oculta: el cronómetro funciona igual,
+        // solo que la pantalla puede apagarse.
+      }
+    }
+    const alVolver = () => {
+      if (!cancelado && document.visibilityState === 'visible') pedir()
+    }
+
+    pedir()
+    document.addEventListener('visibilitychange', alVolver)
+    return () => {
+      cancelado = true
+      document.removeEventListener('visibilitychange', alVolver)
+      lockRef.current?.release().catch(() => {})
+      lockRef.current = null
+    }
+  }, [activo])
 }
 
 export function useRestTimer() {
@@ -46,6 +81,9 @@ export function useRestTimer() {
   const [total, setTotal] = useState(0)
   const finRef = useRef(0) // timestamp de fin (ms)
   const intervalRef = useRef(null)
+
+  // Solo mientras corre de verdad: en pausa no tiene sentido gastar batería.
+  useWakeLock(activo && !pausado)
 
   const limpiar = useCallback(() => {
     if (intervalRef.current) {
