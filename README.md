@@ -4,7 +4,7 @@ Tracker personal de hábitos. PWA mobile-first y modular: hoy gimnasio y nutrici
 más adelante skincare.
 
 El nombre viene de *constancia* + *constelación* + *estela*. Una estrella sola es un
-punto sin sentido; la constelación aparece cuando mirás de lejos y trazás la línea.
+punto sin sentido; la constelación aparece cuando se mira de lejos y se traza la línea.
 Eso es el reporte semanal.
 
 ## Tesis
@@ -67,7 +67,7 @@ Nunca hardcodear un hex.
 
 ## Desarrollo
 
-Necesitás Node 18+ y [pnpm](https://pnpm.io) 10+.
+Se necesita Node 18+ y [pnpm](https://pnpm.io) 10+.
 
 > Usamos pnpm en vez de npm: aísla las dependencias de forma estricta (sin phantom deps)
 > y bloquea los scripts de instalación arbitrarios por defecto. Mismo registry, mejor
@@ -86,7 +86,7 @@ pnpm preview          # sirve /dist
 
 ## Instalar como PWA
 
-Serví la app por HTTPS (Vercel/Netlify ya lo hacen), abrila en el celular y usá
+Sirve la app por HTTPS (Vercel/Netlify ya lo hacen), ábrela en el celular y usa
 **"Agregar a la pantalla de inicio"**.
 
 ## Desplegar

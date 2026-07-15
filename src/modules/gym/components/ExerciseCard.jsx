@@ -24,7 +24,31 @@ function Celda({ value, placeholder, onChange, done }) {
   )
 }
 
-export default function ExerciseCard({ ejercicio, anteriores = [], onChangeSet, onToggleSet, onAddSet, onRemoveSet, prInfo }) {
+// Series de aproximación: INSTRUCCIONES, no registro.
+// Vienen del plan del coach y preparan músculo y articulación antes de las
+// series reales. Por eso no tienen input, ni ✓, ni `done`: no se registran y no
+// cuentan como volumen (viven en la rutina, jamás en la sesión — ver Session.jsx).
+// Van ARRIBA de las series de trabajo porque ese es el orden en que se hacen.
+function Aproximacion({ series }) {
+  // La mayoría de los ejercicios no tiene: ausente no pinta nada, ni un hueco.
+  if (!series || series.length === 0) return null
+  return (
+    <div className="mb-3 rounded-xl bg-superficie-alta/60 p-2.5">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-texto-soft">Aproximación</p>
+      <ul className="mt-1 space-y-0.5">
+        {series.map((s, i) => (
+          <li key={i} className="text-xs font-medium leading-snug text-texto">{s}</li>
+        ))}
+      </ul>
+      {/* Dice por qué no hay nada que marcar, antes de que la pregunta aparezca. */}
+      <p className="mt-1.5 text-[10px] font-medium leading-snug text-texto-soft">
+        Preparan el músculo. No se registran ni cuentan como volumen.
+      </p>
+    </div>
+  )
+}
+
+export default function ExerciseCard({ ejercicio, anteriores = [], aprox = [], onChangeSet, onToggleSet, onAddSet, onRemoveSet, prInfo }) {
   const completo = ejercicioCompleto(ejercicio)
   const esTiempo = ejercicio.tipoReg === 'tiempo'
 
@@ -63,6 +87,9 @@ export default function ExerciseCard({ ejercicio, anteriores = [], onChangeSet, 
           Récord: {prInfo.maxPeso > 0 ? `${prInfo.maxPeso}kg` : ''} {prInfo.maxReps > 0 ? `· ${prInfo.maxReps} reps` : ''}
         </p>
       )}
+
+      {/* Primero la aproximación: es lo que se hace antes de las series reales. */}
+      <Aproximacion series={aprox} />
 
       {/* Encabezado de columnas */}
       <div className="mb-1 flex items-center gap-1.5 px-1 text-[10px] font-bold uppercase tracking-wide text-texto-soft">
@@ -118,18 +145,20 @@ export default function ExerciseCard({ ejercicio, anteriores = [], onChangeSet, 
         ))}
       </div>
 
-      {/* Agregar / quitar serie (como Hevy) */}
+      {/* Agregar / quitar serie (como Hevy).
+          min-h-[44px]: se tocan a mitad del entrenamiento, con las manos
+          mojadas, igual que todo lo demás en esta pantalla. */}
       <div className="mt-3 flex gap-2">
         <button
           onClick={onAddSet}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-marca/40 py-2 text-sm font-bold text-marca active:scale-95"
+          className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-marca/40 py-2 text-sm font-bold text-marca active:scale-95"
         >
           <IconPlus className="h-4 w-4" /> Agregar serie
         </button>
         {ejercicio.sets.length > 1 && (
           <button
             onClick={onRemoveSet}
-            className="flex items-center justify-center rounded-xl border-2 border-borde/25 px-4 py-2 text-texto-soft active:scale-95"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border-2 border-borde/25 px-4 py-2 text-texto-soft active:scale-95"
             aria-label="Quitar última serie"
           >
             <IconMinus className="h-4 w-4" />
