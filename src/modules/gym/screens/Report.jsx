@@ -198,6 +198,23 @@ export default function Report({ onSalir }) {
               <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-texto-soft">Volumen semanal (series)</h3>
               <div className="space-y-1.5">
                 {reporte.volumen.map((v, i) => {
+                  // Grupos sin objetivo (pecho, hombro, gemelos...): se entrenaron,
+                  // así que el volumen se muestra. Pero el veredicto necesita un
+                  // objetivo que nadie puso: sin este corte, `v.series >= undefined`
+                  // da false, `series/undefined` da NaN ("width: NaN%") y la fila
+                  // termina diciendo "6 / undefined-undefined ↑" — un reto por un
+                  // objetivo inventado. Se cuenta el hecho y no se opina.
+                  const sinObjetivo = v.min == null || v.max == null
+                  if (sinObjetivo) {
+                    return (
+                      <div key={i} className="flex justify-between text-xs">
+                        <span className="font-medium text-texto">{v.label}</span>
+                        <span className="text-texto-soft">
+                          {v.series} {v.series === 1 ? 'serie' : 'series'} · sin objetivo
+                        </span>
+                      </div>
+                    )
+                  }
                   const enRango = v.series >= v.min && v.series <= v.max
                   const bajo = v.series < v.min
                   const pct = Math.min(100, (v.series / v.max) * 100)

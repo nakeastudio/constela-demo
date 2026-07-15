@@ -190,6 +190,13 @@ function normalizarEjercicio(e) {
     descanso: Number(e.descanso) >= 0 ? Number(e.descanso) : 60,
     grupo: typeof e.grupo === 'string' ? e.grupo : 'gluteo',
     ...(e.tipoReg ? { tipoReg: e.tipoReg } : {}),
+    // Opcional, igual que tipoReg y aprox: pasa si está, se omite si no.
+    // Solo lo traen los ejercicios elegidos del catálogo. Los cargados a mano y
+    // los de cualquier rutina anterior no tienen, y así se quedan: no se
+    // adivina una imagen cruzando el nombre contra el catálogo. Eso reescribiría
+    // su historial por atrás y le pondría la foto de otro ejercicio al suyo.
+    // Un JSON pegado de una IA tampoco va a traerlo: tiene que seguir entrando.
+    ...(typeof e.media_id === 'string' && e.media_id ? { media_id: e.media_id } : {}),
     ...(Array.isArray(e.aprox) && e.aprox.length
       ? { aprox: e.aprox.filter((x) => typeof x === 'string') }
       : {})
@@ -197,6 +204,12 @@ function normalizarEjercicio(e) {
 }
 
 // Objetivos de volumen semanal (series por grupo muscular)
+//
+// Solo están los grupos para los que hay un objetivo REAL, puesto a propósito.
+// Los grupos nuevos que trajo el catálogo (pecho, hombro, gemelos, trapecio,
+// antebrazo, cardio) NO se agregan acá: un objetivo que nadie eligió haría que
+// el reporte rete por "te falta volumen de pecho" que nunca se propuso hacer.
+// El reporte muestra las series de esos grupos sin veredicto (ver Report.jsx).
 export const OBJETIVOS_VOLUMEN = {
   gluteo: { min: 16, max: 20, label: 'Glúteo' },
   cuadriceps: { min: 12, max: 16, label: 'Cuádriceps/Isquios' },
@@ -207,11 +220,22 @@ export const OBJETIVOS_VOLUMEN = {
 }
 
 // Etiquetas legibles por grupo (para reporte e historial)
+//
+// Los seis primeros son los que la app conocía desde el principio. Los otros
+// llegaron con el catálogo de ejercicios (data/catalogo.js): un catálogo
+// completo tiene press de banca y elevaciones laterales, y meterlos en "brazos"
+// sería mentirle al volumen semanal.
 export const GRUPO_LABEL = {
   gluteo: 'Glúteo',
   cuadriceps: 'Cuádriceps',
   isquios: 'Isquios',
   espalda: 'Espalda',
   brazos: 'Brazos',
-  core: 'Core'
+  core: 'Core',
+  pecho: 'Pecho',
+  hombro: 'Hombro',
+  gemelos: 'Gemelos',
+  trapecio: 'Trapecio',
+  antebrazo: 'Antebrazo',
+  cardio: 'Cardio'
 }

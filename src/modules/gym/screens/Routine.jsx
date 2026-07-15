@@ -10,6 +10,7 @@ import { GRUPO_LABEL, clavesDia, siguienteClaveDia, diaVacio, cardioVacio, valid
 import { saveRutina, resetRutina } from '../lib/storage.js'
 import { IconChevronLeft, IconChevronUp, IconChevronDown, IconPlus, IconTrash, IconDownload, IconUpload } from '../../../core/components/icons.jsx'
 import Toggle from '../../../core/components/Toggle.jsx'
+import SelectorEjercicio from '../components/SelectorEjercicio.jsx'
 
 const GRUPOS = Object.keys(GRUPO_LABEL)
 
@@ -18,6 +19,7 @@ export default function Routine({ rutina, onChange, onSalir }) {
   const [diaSel, setDiaSel] = useState(clavesDia(rutina)[0])
   const [panel, setPanel] = useState(null) // 'export' | 'import' | null
   const [importText, setImportText] = useState('')
+  const [selector, setSelector] = useState(null) // 'ejercicios' | 'core' | null
 
   const dias = clavesDia(r)
   const dia = r[diaSel] || r[dias[0]]
@@ -41,10 +43,26 @@ export default function Routine({ rutina, onChange, onSalir }) {
     const lista = dia[seccion].filter((_, i) => i !== idx)
     persistir({ ...r, [diaSel]: { ...dia, [seccion]: lista } })
   }
-  const agregarEj = (seccion) => {
-    const base = { nombre: 'Nuevo ejercicio', series: 3, reps: '10-12', descanso: 60, grupo: 'gluteo' }
-    if (seccion === 'core') base.grupo = 'core'
+  // El nombre y el grupo llegan del selector — del catálogo o del alta a mano —
+  // y nunca se tipean sueltos acá. Los récords se guardan por nombre, así que un
+  // "Nuevo ejercicio" tipeado a mano cada vez partía el historial; y el grupo
+  // decide el volumen semanal. El resto son los defaults de siempre: series,
+  // reps y descanso se ajustan abajo, en los campos normales del editor.
+  // `media_id` solo viene si se eligió del catálogo, y se omite si no: un
+  // ejercicio cargado a mano no tiene imagen y no se le inventa una. La sesión
+  // lo lee para mostrar la imagen mientras se entrena; se guarda el id, nunca la
+  // URL armada.
+  const agregarEj = (seccion, { nombre, grupo, media_id }) => {
+    const base = {
+      nombre,
+      series: 3,
+      reps: '10-12',
+      descanso: 60,
+      grupo,
+      ...(media_id ? { media_id } : {})
+    }
     persistir({ ...r, [diaSel]: { ...dia, [seccion]: [...(dia[seccion] || []), base] } })
+    setSelector(null)
   }
 
   // ---- activación ----
@@ -194,7 +212,7 @@ export default function Routine({ rutina, onChange, onSalir }) {
         lista={dia.ejercicios}
         onEdit={editarEj}
         onBorrar={borrarEj}
-        onAgregar={() => agregarEj('ejercicios')}
+        onAgregar={() => setSelector('ejercicios')}
         inputBase={inputBase}
       />
 
@@ -205,7 +223,7 @@ export default function Routine({ rutina, onChange, onSalir }) {
         lista={dia.core || []}
         onEdit={editarEj}
         onBorrar={borrarEj}
-        onAgregar={() => agregarEj('core')}
+        onAgregar={() => setSelector('core')}
         inputBase={inputBase}
         conTiempo
       />
@@ -324,6 +342,17 @@ export default function Routine({ rutina, onChange, onSalir }) {
       </div>
 
       <button onClick={resetear} className="w-full rounded-xl py-2 text-sm font-semibold text-texto-soft">Restaurar rutina original</button>
+
+      {/* Selector de ejercicio: mismo componente para fuerza y para core. La
+          sección solo define el filtro con el que arranca; el grupo lo decide
+          el catálogo. */}
+      {selector && (
+        <SelectorEjercicio
+          seccion={selector}
+          onElegir={(ej) => agregarEj(selector, ej)}
+          onCerrar={() => setSelector(null)}
+        />
+      )}
     </div>
   )
 }

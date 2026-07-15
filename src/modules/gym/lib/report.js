@@ -4,7 +4,7 @@
 
 import { getSessions, getRutina } from './storage.js'
 import { rangoSemana, rangoSemanaAnterior, enRango } from '../../../core/lib/dates.js'
-import { OBJETIVOS_VOLUMEN } from '../data/rutina.js'
+import { OBJETIVOS_VOLUMEN, GRUPO_LABEL } from '../data/rutina.js'
 
 // Filtra sesiones dentro de un rango [inicio, fin]
 function sesionesEnRango(sessions, inicio, fin) {
@@ -132,7 +132,28 @@ export function generarReporte(isoRef) {
     acc[obj.label].series += volumenRaw[grupo] || 0
     return acc
   }, {})
-  const volumenLista = Object.values(volumen)
+
+  // Grupos entrenados que NO tienen objetivo (pecho, hombro, gemelos... los que
+  // trajo el catálogo, o un grupo raro de una rutina importada).
+  //
+  // Antes se caían del reporte sin decir nada: el reduce de arriba solo recorre
+  // OBJETIVOS_VOLUMEN, así que las series de pecho se contaban en volumenRaw y
+  // después se tiraban. Se hacía trabajo y no se veía en ningún lado.
+  //
+  // Ahora se muestran con min/max en null: el volumen es un hecho y se cuenta;
+  // el veredicto ("en rango", "por debajo") necesita un objetivo que nadie puso,
+  // así que no se inventa. Un objetivo inventado haría que el reporte rete por
+  // algo que nunca se propuso: lo contrario de constancia > perfección.
+  const sinObjetivo = Object.entries(volumenRaw)
+    .filter(([grupo, series]) => series > 0 && !OBJETIVOS_VOLUMEN[grupo])
+    .map(([grupo, series]) => ({
+      label: GRUPO_LABEL[grupo] || grupo,
+      series,
+      min: null,
+      max: null
+    }))
+
+  const volumenLista = [...Object.values(volumen), ...sinObjetivo]
 
   // --- Notas (de la primera sesión que tenga notas) ---
   const notas = actuales.find((s) => s.notas && s.notas.trim())?.notas || ''
@@ -174,8 +195,18 @@ export function markdownSemana(isoRef) {
     L.push('| Grupo | Series | Objetivo | Estado |')
     L.push('| --- | ---: | :---: | --- |')
     r.volumen.forEach((v) => {
-      const estado = v.series < v.min ? 'por debajo' : v.series > v.max ? 'por encima' : 'en rango'
-      L.push(`| ${v.label} | ${v.series} | ${v.min}-${v.max} | ${estado} |`)
+      // Sin objetivo no hay veredicto. Sin este corte, `v.series > null` se
+      // evalúa como `> 0` y la tabla le diría a la IA "pecho: por encima del
+      // objetivo" sobre un objetivo que no existe.
+      const sinObjetivo = v.min == null || v.max == null
+      const estado = sinObjetivo
+        ? 'sin objetivo'
+        : v.series < v.min
+          ? 'por debajo'
+          : v.series > v.max
+            ? 'por encima'
+            : 'en rango'
+      L.push(`| ${v.label} | ${v.series} | ${sinObjetivo ? '—' : `${v.min}-${v.max}`} | ${estado} |`)
     })
     L.push('')
 

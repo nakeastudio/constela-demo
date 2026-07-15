@@ -104,3 +104,37 @@ falla AA como texto.
 Hoy viven en `localStorage`; Supabase se conecta en la próxima tanda. **Ajustes →
 Exportar JSON** hace un backup completo, e **Importar JSON** lo restaura. El formato de
 backup está versionado y los backups viejos siguen importando.
+
+## Catálogo de ejercicios
+
+El botón "Agregar ejercicio" abre un selector con 1324 ejercicios: búsqueda y filtro por
+grupo muscular. No es cosmética, es integridad de datos. Los récords se guardan por
+nombre (`prs[nombre]`), así que "Hip Thrust" y "Hip thrust" escritos a mano son dos
+ejercicios distintos para la app: el historial se parte y los récords desaparecen. Y un
+grupo muscular equivocado corrompe el volumen semanal en silencio. Elegir de un catálogo
+no valida esos errores: hace que no puedan pasar. El `grupo` sale siempre del catálogo.
+
+Los nombres quedan en **inglés**, tal como vienen del dataset. No se traducen: el
+vocabulario de gimnasio ya es inglés. La búsqueda ignora acentos y mayúsculas.
+
+Sigue habiendo carga a mano para lo que no está en el catálogo — guía, no encierra. Las
+rutinas ya guardadas no se tocan ni se migran.
+
+### Fuente y licencia
+
+Datos: [hasaneyldrm/exercises-dataset](https://github.com/hasaneyldrm/exercises-dataset),
+bajo **licencia MIT** — Copyright (c) 2026 Hasan Emir Yıldırım. La nota de copyright y el
+permiso completos están en la cabecera de `src/modules/gym/data/catalogo.js`.
+
+De cada entrada se guardan solo cuatro campos (`nombre`, `grupo`, `equipo`, `media_id`).
+Las instrucciones en nueve idiomas se descartan: son megabytes que la app no muestra.
+Regenerar con `node scripts/gen-catalogo.mjs`, que es también donde vive el mapeo de la
+taxonomía del dataset a los grupos de la app.
+
+**Las imágenes son © [Gym visual](https://gymvisual.com/) y NO se redistribuyen.** Quedan
+explícitamente fuera del permiso MIT del dataset. Este repo no copia, ni vendorea, ni
+re-hostea ningún archivo de media: guarda la clave mínima (`media_id`) y **referencia la
+URL de upstream** al renderizar, a 180×180, con la atribución visible en el selector.
+Enlazar no es redistribuir. Su uso se rige por los
+[términos de Gym visual](https://gymvisual.com/content/3-terms-and-conditions-of-use),
+no por la MIT.
