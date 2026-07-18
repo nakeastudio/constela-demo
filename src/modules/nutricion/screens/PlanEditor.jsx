@@ -7,9 +7,9 @@
 //
 // Permite: renombrar días y cambiar su tipo, editar objetivos, agregar/quitar/
 // mover/renombrar comidas, editar suplementos, la tabla de canje de carbos,
-// los objetivos de agua y las reglas; y EXPORTAR/IMPORTAR el plan como JSON
-// (para mandárselo al nutricionista o a una IA y pegar de vuelta la versión
-// actualizada).
+// los objetivos de agua y las reglas; e IMPORTAR el plan como JSON (la versión
+// que el nutricionista o una IA devuelven a partir del reporte que se copia
+// desde Report).
 import React, { useState } from 'react'
 import {
   DIAS_SEMANA,
@@ -22,7 +22,7 @@ import {
   validarPlan
 } from '../data/plan.js'
 import { getPlan, savePlan, resetPlan } from '../lib/storage.js'
-import { IconChevronLeft, IconPlus, IconTrash, IconDownload, IconUpload } from '../../../core/components/icons.jsx'
+import { IconChevronLeft, IconPlus, IconTrash, IconUpload } from '../../../core/components/icons.jsx'
 
 const TIPOS = Object.keys(TIPOS_DIA)
 const CATS = Object.keys(CATEGORIAS)
@@ -31,7 +31,7 @@ const ETIQUETA_CORTA = { lunes: 'Lun', martes: 'Mar', miercoles: 'Mié', jueves:
 export default function PlanEditor({ onSalir }) {
   const [p, setP] = useState(() => getPlan())
   const [diaSel, setDiaSel] = useState(() => DIAS_SEMANA.find((k) => getPlan().dias[k]) || 'lunes')
-  const [panel, setPanel] = useState(null) // 'export' | 'import' | null
+  const [panel, setPanel] = useState(null) // 'import' | null
   const [importText, setImportText] = useState('')
 
   const dias = DIAS_SEMANA.filter((k) => p.dias[k])
@@ -99,16 +99,10 @@ export default function PlanEditor({ onSalir }) {
 
   const editarAgua = (campo, valor) => persistir({ ...p, agua: { ...p.agua, [campo]: Number(valor) || 0 } })
 
-  // ---- import / export JSON ----
-  const exportarPlan = JSON.stringify(p, null, 2)
-  const copiar = async () => {
-    try {
-      await navigator.clipboard.writeText(exportarPlan)
-      alert('Plan copiado. Pegalo donde quieras (nutricionista / IA).')
-    } catch {
-      alert('No se pudo copiar automáticamente. Selecciona el texto y cópialo a mano.')
-    }
-  }
+  // ---- import JSON ----
+  // Solo la vuelta: el reporte se copia desde Report ("Copiar reporte para
+  // IA"); una IA devuelve el plan ajustado y se pega acá. La ida no vive en
+  // este editor.
   const aplicarImport = () => {
     try {
       const limpio = validarPlan(JSON.parse(importText))
@@ -357,25 +351,15 @@ export default function PlanEditor({ onSalir }) {
         <button onClick={agregarRegla} className="flex min-h-[44px] items-center gap-1 text-xs font-semibold text-marca"><IconPlus className="h-3.5 w-3.5" /> Agregar regla</button>
       </div>
 
-      {/* ---- Compartir / Importar plan (JSON) ---- */}
+      {/* ---- Importar plan (JSON) ---- */}
+      {/* Solo la vuelta: el reporte se copia desde Report ("Copiar reporte para
+          IA"), la IA devuelve el plan ajustado y se pega acá. */}
       <div className="space-y-2 rounded-2xl border border-borde/25 bg-superficie p-4 shadow-suave">
-        <h2 className="font-bold tracking-tight text-texto">Compartir / Importar plan</h2>
-        <p className="text-xs text-texto-soft">Exporta el plan para enviárselo al nutricionista o a una IA, y pega de vuelta la versión que te devuelvan.</p>
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => setPanel(panel === 'export' ? null : 'export')} className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl bg-marca text-sm font-bold text-contraste active:scale-95">
-            <IconDownload className="h-4 w-4" /> Exportar
-          </button>
-          <button onClick={() => setPanel(panel === 'import' ? null : 'import')} className="flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border-2 border-borde/25 text-sm font-bold text-texto active:scale-95">
-            <IconUpload className="h-4 w-4" /> Importar
-          </button>
-        </div>
-
-        {panel === 'export' && (
-          <div className="space-y-2 pt-1">
-            <textarea readOnly value={exportarPlan} rows={6} className={`w-full font-mono text-[11px] text-texto ${inputBase}`} onFocus={(e) => e.target.select()} />
-            <button onClick={copiar} className="min-h-[44px] w-full rounded-xl bg-completo text-sm font-bold text-contraste active:scale-95">Copiar al portapapeles</button>
-          </div>
-        )}
+        <h2 className="font-bold tracking-tight text-texto">Importar plan</h2>
+        <p className="text-xs text-texto-soft">Pega el JSON del plan que te devuelva el nutricionista o la IA para reemplazar el actual.</p>
+        <button onClick={() => setPanel(panel === 'import' ? null : 'import')} className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl border-2 border-borde/25 text-sm font-bold text-texto active:scale-95">
+          <IconUpload className="h-4 w-4" /> Importar
+        </button>
 
         {panel === 'import' && (
           <div className="space-y-2 pt-1">

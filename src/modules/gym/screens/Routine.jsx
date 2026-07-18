@@ -2,22 +2,46 @@
 //  EDITOR DE RUTINA  (totalmente editable)
 // ============================================================
 // Permite: renombrar días, agregar/quitar días, editar calentamiento,
-// activación, ejercicios de fuerza y core, prender/apagar cardio, y
-// EXPORTAR/IMPORTAR la rutina como JSON (para enviársela al coach o a una IA
-// y pegar de vuelta la versión actualizada).
+// activación, ejercicios de fuerza y core (con series de aproximación),
+// prender/apagar cardio, e IMPORTAR la rutina como JSON (la versión que el
+// coach o una IA devuelven a partir del reporte que se copia desde Report).
 import React, { useState } from 'react'
 import { GRUPO_LABEL, clavesDia, siguienteClaveDia, diaVacio, cardioVacio, validarRutina } from '../data/rutina.js'
 import { saveRutina, resetRutina } from '../lib/storage.js'
-import { IconChevronLeft, IconChevronUp, IconChevronDown, IconPlus, IconTrash, IconDownload, IconUpload } from '../../../core/components/icons.jsx'
+import { IconChevronLeft, IconChevronUp, IconChevronDown, IconPlus, IconTrash, IconUpload } from '../../../core/components/icons.jsx'
 import Toggle from '../../../core/components/Toggle.jsx'
 import SelectorEjercicio from '../components/SelectorEjercicio.jsx'
 
 const GRUPOS = Object.keys(GRUPO_LABEL)
 
+// --- reps: rango numérico sin escribir el guion ---
+// Las reps son un STRING y se guardan como STRING (ExerciseCard muestra
+// repsObjetivo, los validadores hacen String): esto es un cambio de AFORDANCIA
+// de entrada, no de esquema. No hay migración; las rutinas viejas y el JSON
+// pegado siguen entrando igual.
+//
+// El caso común es un rango (`6-8`, `10-12`) → dos campos numéricos, sin teclear
+// el `-` (que en el celular forzaba cambiar de teclado). Pero las reps también
+// llevan cualificadores (`c/pierna`, `c/lado`, `seg`) y valores sueltos
+// (`AMRAP`, un número solo), y eso NO se pierde: va en un tercer campo de texto.
+//
+// Un solo parser cubre todo: mín opcional, máx opcional (tras `-`), y el resto
+// como cualificador. `AMRAP` → sin números, cualificador "AMRAP". `30-45 seg` →
+// 30, 45, "seg". `8-10 c/pierna` → 8, 10, "c/pierna". `12` → 12, "", "".
+function parsearReps(reps) {
+  const m = String(reps ?? '').trim().match(/^(\d+)?\s*(?:-\s*(\d+))?\s*(.*?)\s*$/)
+  return { min: m?.[1] ?? '', max: m?.[2] ?? '', cualif: (m?.[3] ?? '').trim() }
+}
+
+function componerReps(min, max, cualif) {
+  const rango = min && max ? `${min}-${max}` : (min || '')
+  return [rango, (cualif || '').trim()].filter(Boolean).join(' ')
+}
+
 export default function Routine({ rutina, onChange, onSalir }) {
   const [r, setR] = useState(rutina)
   const [diaSel, setDiaSel] = useState(clavesDia(rutina)[0])
-  const [panel, setPanel] = useState(null) // 'export' | 'import' | null
+  const [panel, setPanel] = useState(null) // 'import' | null
   const [importText, setImportText] = useState('')
   const [selector, setSelector] = useState(null) // 'ejercicios' | 'core' | null
 
@@ -111,16 +135,10 @@ export default function Routine({ rutina, onChange, onSalir }) {
     setDiaSel(clavesDia(nuevo)[0])
   }
 
-  // ---- import / export JSON ----
-  const exportarRutina = JSON.stringify(r, null, 2)
-  const copiar = async () => {
-    try {
-      await navigator.clipboard.writeText(exportarRutina)
-      alert('Rutina copiada. Ya puedes pegarla donde quieras (coach / IA).')
-    } catch {
-      alert('No se pudo copiar automáticamente. Selecciona el texto y cópialo a mano.')
-    }
-  }
+  // ---- import JSON ----
+  // Solo la vuelta: el reporte se copia desde Report.jsx ("Copiar reporte para
+  // IA"); una IA devuelve la rutina ajustada y se pega acá. La ida no vive en
+  // este editor.
   const aplicarImport = () => {
     try {
       const obj = JSON.parse(importText)
@@ -304,25 +322,15 @@ export default function Routine({ rutina, onChange, onSalir }) {
         </button>
       )}
 
-      {/* ---- Compartir / Importar rutina (JSON) ---- */}
+      {/* ---- Importar rutina (JSON) ---- */}
+      {/* Solo la vuelta: el reporte se copia desde Report ("Copiar reporte para
+          IA"), la IA devuelve la rutina ajustada y se pega acá. */}
       <div className="space-y-2 rounded-2xl border border-borde/25 bg-superficie p-4 shadow-suave">
-        <h2 className="font-bold tracking-tight text-texto">Compartir / Importar plan</h2>
-        <p className="text-xs text-texto-soft">Exporta la rutina para enviársela al coach o a una IA, y pega de vuelta la versión que te devuelvan.</p>
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => setPanel(panel === 'export' ? null : 'export')} className="flex items-center justify-center gap-1.5 rounded-xl bg-marca py-2.5 text-sm font-bold text-contraste active:scale-95">
-            <IconDownload className="h-4 w-4" /> Exportar
-          </button>
-          <button onClick={() => setPanel(panel === 'import' ? null : 'import')} className="flex items-center justify-center gap-1.5 rounded-xl border-2 border-borde/25 py-2.5 text-sm font-bold text-texto active:scale-95">
-            <IconUpload className="h-4 w-4" /> Importar
-          </button>
-        </div>
-
-        {panel === 'export' && (
-          <div className="space-y-2 pt-1">
-            <textarea readOnly value={exportarRutina} rows={6} className={`w-full font-mono text-[11px] text-texto ${inputBase}`} onFocus={(e) => e.target.select()} />
-            <button onClick={copiar} className="w-full rounded-xl bg-completo py-2.5 text-sm font-bold text-contraste active:scale-95">Copiar al portapapeles</button>
-          </div>
-        )}
+        <h2 className="font-bold tracking-tight text-texto">Importar rutina</h2>
+        <p className="text-xs text-texto-soft">Pega el JSON de la rutina que te devuelva el coach o la IA para reemplazar la actual.</p>
+        <button onClick={() => setPanel(panel === 'import' ? null : 'import')} className="flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-borde/25 py-2.5 text-sm font-bold text-texto active:scale-95">
+          <IconUpload className="h-4 w-4" /> Importar
+        </button>
 
         {panel === 'import' && (
           <div className="space-y-2 pt-1">
@@ -366,20 +374,18 @@ function SeccionEjercicios({ titulo, seccion, lista, onEdit, onBorrar, onAgregar
       {lista.map((ej, idx) => (
         <div key={idx} className="space-y-2 rounded-xl bg-fondo p-3">
           <input value={ej.nombre} onChange={(e) => onEdit(seccion, idx, 'nombre', e.target.value)} className={`w-full font-semibold text-texto ${inputBase}`} />
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <label className="text-[11px] font-medium text-texto-soft">
               Series
               <input type="number" value={ej.series} onChange={(e) => onEdit(seccion, idx, 'series', Number(e.target.value))} className={`mt-0.5 w-full text-texto ${inputBase}`} />
-            </label>
-            <label className="text-[11px] font-medium text-texto-soft">
-              Reps
-              <input value={ej.reps} onChange={(e) => onEdit(seccion, idx, 'reps', e.target.value)} className={`mt-0.5 w-full text-texto ${inputBase}`} />
             </label>
             <label className="text-[11px] font-medium text-texto-soft">
               Descanso (s)
               <input type="number" value={ej.descanso} onChange={(e) => onEdit(seccion, idx, 'descanso', Number(e.target.value))} className={`mt-0.5 w-full text-texto ${inputBase}`} />
             </label>
           </div>
+          {/* Reps: rango sin teclear el guion (ver CamposReps). */}
+          <CamposReps value={ej.reps} onChange={(v) => onEdit(seccion, idx, 'reps', v)} inputBase={inputBase} />
           {/* Etiquetas ARRIBA del control (no al lado): con la etiqueta en línea,
               Grupo + Registro + Quitar no entran en 360px y "Quitar" se salía de
               la pantalla. Apiladas, los selects se encogen (min-w-0 flex-1) y el
@@ -406,10 +412,105 @@ function SeccionEjercicios({ titulo, seccion, lista, onEdit, onBorrar, onAgregar
               <IconTrash className="h-4 w-4" /> Quitar
             </button>
           </div>
+          {/* Series de aproximación: INSTRUCCIONES (calentamiento progresivo),
+              no registro. La sesión las lee del plan y nunca las cuenta como
+              volumen ni PR. Opcional: la mayoría no tiene y no se fuerza una
+              caja vacía — solo queda el botón de agregar. */}
+          <CamposAprox
+            lista={ej.aprox || []}
+            onChange={(arr) => onEdit(seccion, idx, 'aprox', arr.length ? arr : undefined)}
+            inputBase={inputBase}
+          />
         </div>
       ))}
       <button onClick={onAgregar} className="flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-marca/50 py-2.5 text-sm font-bold text-marca active:scale-95">
         <IconPlus className="h-4 w-4" /> Agregar ejercicio
+      </button>
+    </div>
+  )
+}
+
+// --- Reps: dos campos numéricos (mín/máx) + un texto para el cualificador ---
+// El rango se arma solo al unir mín y máx: no hay que teclear el guion. El
+// tercer campo conserva lo que un rango no expresa (`c/pierna`, `seg`, `AMRAP`,
+// un número suelto). Parsea desde el string guardado y vuelve a componer uno,
+// así que `6-8`, `8-10 c/pierna`, `30-45 seg`, `15-20` cargan y guardan idénticos.
+function CamposReps({ value, onChange, inputBase }) {
+  const { min, max, cualif } = parsearReps(value)
+  const set = (campo, v) => {
+    const next = { min, max, cualif, [campo]: v }
+    onChange(componerReps(next.min, next.max, next.cualif))
+  }
+  return (
+    <div>
+      <p className="mb-0.5 text-[11px] font-medium text-texto-soft">Reps (objetivo)</p>
+      <div className="flex items-center gap-1.5">
+        <input
+          type="number"
+          inputMode="numeric"
+          min="0"
+          value={min}
+          onChange={(e) => set('min', e.target.value)}
+          placeholder="mín"
+          aria-label="Reps mínimas"
+          className={`w-14 shrink-0 text-center text-texto ${inputBase}`}
+        />
+        <span aria-hidden="true" className="shrink-0 font-bold text-texto-soft">–</span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min="0"
+          value={max}
+          onChange={(e) => set('max', e.target.value)}
+          placeholder="máx"
+          aria-label="Reps máximas"
+          className={`w-14 shrink-0 text-center text-texto ${inputBase}`}
+        />
+        <input
+          value={cualif}
+          onChange={(e) => set('cualif', e.target.value)}
+          placeholder="c/pierna, seg…"
+          aria-label="Detalle de reps (opcional)"
+          className={`min-w-0 flex-1 text-texto ${inputBase}`}
+        />
+      </div>
+    </div>
+  )
+}
+
+// --- Series de aproximación (opcional, por ejercicio) ---
+// Lista de strings libres (`1×10 al 50%`). Ausente NO pinta caja: solo el botón
+// de agregar, igual que la activación del día. Al quitar la última, la lista se
+// vacía y el padre la vuelve a `undefined` (ausente-ausente, ver onChange).
+function CamposAprox({ lista, onChange, inputBase }) {
+  const editar = (i, v) => onChange(lista.map((x, j) => (j === i ? v : x)))
+  const agregar = () => onChange([...lista, ''])
+  const quitar = (i) => onChange(lista.filter((_, j) => j !== i))
+  return (
+    <div>
+      {lista.length > 0 && (
+        <>
+          <p className="mb-1 text-[11px] font-medium text-texto-soft">Series de aproximación</p>
+          <div className="space-y-1.5">
+            {lista.map((a, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  value={a}
+                  onChange={(e) => editar(i, e.target.value)}
+                  placeholder="1×10 al 50%"
+                  aria-label={`Aproximación ${i + 1}`}
+                  className={`w-full text-texto ${inputBase}`}
+                />
+                <button onClick={() => quitar(i)} className="flex h-11 w-8 shrink-0 items-center justify-center text-texto-soft" aria-label="Quitar aproximación">
+                  <IconTrash className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <button onClick={agregar} className="mt-1.5 flex min-h-[44px] items-center gap-1 text-xs font-semibold text-marca">
+        <IconPlus className="h-3.5 w-3.5" /> Agregar aproximación
       </button>
     </div>
   )

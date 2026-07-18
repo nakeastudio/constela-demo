@@ -22,7 +22,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import ExerciseCard from '../components/ExerciseCard.jsx'
 import CardioCard from '../components/CardioCard.jsx'
-import { crearSesion, ultimaSesionSets, ejercicioCompleto } from '../lib/session.js'
+import { crearSesion, reconciliarSesion, ultimaSesionSets, ejercicioCompleto } from '../lib/session.js'
 import {
   getActiveSession,
   saveActiveSession,
@@ -128,9 +128,22 @@ export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada }
   // (ver lib/session.js).
   const [sesion, setSesion] = useState(() => {
     const activa = getActiveSession(diaKey)
-    if (activa && activa.fecha === hoyISO()) return activa
+    // Un borrador de hoy se retoma, pero PRIMERO se reconcilia contra el plan
+    // vigente: si editó la rutina mientras no entrenaba (agregó/quitó/reordenó
+    // ejercicios o cambió objetivos), la sesión que retoma refleja el plan de
+    // ahora sin perder lo ya registrado. Ver reconciliarSesion.
+    if (activa && activa.fecha === hoyISO()) return reconciliarSesion(activa, dia)
     return crearSesion(diaKey, dia, hoyISO())
   })
+
+  // --- Reconciliar en vivo si el plan cambia con la sesión montada ---
+  // El router de App desmonta Session al ir al editor, así que el caso normal lo
+  // cubre el inicializador de arriba. Este efecto es la red por si `dia` cambia
+  // sin desmontar: reconciliarSesion devuelve el MISMO borrador cuando nada
+  // cambió, así que en el montaje (ya reconciliado) no dispara re-render.
+  useEffect(() => {
+    setSesion((prev) => reconciliarSesion(prev, dia))
+  }, [dia])
 
   // --- Autoguardado en cada cambio ---
   useEffect(() => {
