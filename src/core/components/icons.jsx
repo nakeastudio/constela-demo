@@ -38,6 +38,7 @@ import {
   Coffee,
   Info,
   Salad,
+  Sparkles,
   User,
   Users
 } from 'lucide-react'
@@ -83,5 +84,6 @@ export const IconPill = icono(Pill)
 export const IconCoffee = icono(Coffee)
 export const IconInfo = icono(Info)
 export const IconSalad = icono(Salad)
+export const IconSparkle = icono(Sparkles)
 export const IconUser = icono(User)
 export const IconUsers = icono(Users)

@@ -10,10 +10,11 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { generarReporte } from '../lib/report.js'
 import { generarReporte as generarReporteNutricion } from '../../nutricion/lib/report.js'
+import { generarReporte as generarReporteSkincare } from '../../skincare/lib/report.js'
 import { reporteMarkdown, moduloActivo } from '../../../core/lib/modulos.js'
 import { fmtLargo, fmtCorto, hoyISO, fromISO, toISO, nombreDiaSemana } from '../../../core/lib/dates.js'
 import { getSettings, saveSettings } from '../../../core/lib/storage.js'
-import { IconChevronLeft, IconChevronRight, IconTrophy, IconRun, IconNote, IconDownload, IconWater, IconPill, IconMeal, IconCheck } from '../../../core/components/icons.jsx'
+import { IconChevronLeft, IconChevronRight, IconTrophy, IconRun, IconNote, IconDownload, IconWater, IconPill, IconMeal, IconCheck, IconSparkle } from '../../../core/components/icons.jsx'
 
 // Nota semanal para el coach (persistida por semana en settings)
 function getNotaSemana(inicio) {
@@ -40,9 +41,11 @@ export default function Report({ onSalir }) {
   // porque volver al Reporte re-monta la pantalla.
   const gymActivo = moduloActivo('gym')
   const nutricionActiva = moduloActivo('nutricion')
+  const skincareActivo = moduloActivo('skincare')
   const [refIso, setRefIso] = useState(hoyISO())
   const reporte = useMemo(() => generarReporte(refIso), [refIso])
   const nutri = useMemo(() => generarReporteNutricion(refIso), [refIso])
+  const skin = useMemo(() => generarReporteSkincare(refIso), [refIso])
   const [copiado, setCopiado] = useState('')
   const [nota, setNota] = useState(() => getNotaSemana(generarReporte(refIso).rango.inicio))
   const [exportando, setExportando] = useState(false)
@@ -131,7 +134,7 @@ export default function Report({ onSalir }) {
           </p>
         </div>
 
-        {!gymActivo && !nutricionActiva && (
+        {!gymActivo && !nutricionActiva && !skincareActivo && (
           <p className="py-8 text-center text-sm text-texto-soft">
             No hay módulos activos. Activa alguno en Ajustes para ver tu semana.
           </p>
@@ -309,6 +312,44 @@ export default function Report({ onSalir }) {
                     <p className="text-[10px] font-medium text-texto-soft">agua promedio</p>
                   </div>
                 </div>
+              </div>
+            )}
+          </section>
+          )}
+
+          {/* ---- Skincare ---- */}
+          {/* Acoplamiento conocido: esta pantalla enumera los módulos a mano (ya
+              lo hacía con gym y nutrición), así que sumar skincare toca este
+              archivo. El lado markdown ("Copiar para IA") SÍ recorre el registro
+              y no necesitó cambios. Ver reporte. */}
+          {skincareActivo && (
+          <section>
+            <h3 className="mb-2 flex items-center gap-1.5 text-sm font-bold uppercase tracking-wide text-texto-soft">
+              <IconSparkle className="h-4 w-4" /> Skincare
+            </h3>
+            {!skin.hayDatos ? (
+              <p className="text-sm text-texto-soft">Sin registros de skincare esta semana.</p>
+            ) : (
+              <div className="space-y-2">
+                {/* El promedio manda: va primero y en grande. */}
+                <div className="rounded-xl bg-fondo p-3">
+                  <p className="text-2xl font-extrabold tabular-nums text-completo">{skin.adherenciaTotal}%</p>
+                  <p className="text-xs font-medium text-texto-soft">
+                    adherencia de la semana · {skin.hechosTotal}/{skin.planificadosTotal} pasos
+                  </p>
+                </div>
+
+                {skin.adherencia.map((a) => (
+                  <div key={a.id} className="flex items-center gap-2">
+                    <span className="w-28 shrink-0 truncate text-xs font-semibold text-texto">{a.nombre}</span>
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-superficie-alta">
+                      <div className="h-full rounded-full bg-completo transition-all" style={{ width: `${a.pct}%` }} />
+                    </div>
+                    <span className="w-14 shrink-0 text-right text-xs font-bold tabular-nums text-texto-soft">
+                      {a.hechos}/{a.planificados}
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </section>

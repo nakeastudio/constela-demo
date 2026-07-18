@@ -17,6 +17,8 @@ import RestTimer from './modules/gym/components/RestTimer.jsx'
 import { useRestTimer } from './modules/gym/hooks/useRestTimer.js'
 import Nutricion from './modules/nutricion/screens/Nutricion.jsx'
 import PlanEditor from './modules/nutricion/screens/PlanEditor.jsx'
+import Skincare from './modules/skincare/screens/Skincare.jsx'
+import RutinasEditor from './modules/skincare/screens/RutinasEditor.jsx'
 import Settings from './core/screens/Settings.jsx'
 import Perfil from './core/screens/Perfil.jsx'
 import Acceso from './core/screens/Acceso.jsx'
@@ -28,14 +30,15 @@ import { useTheme } from './core/hooks/useTheme.js'
 import { getRutina } from './modules/gym/lib/storage.js'
 import { resumenHoy as resumenGym } from './modules/gym/lib/session.js'
 import { resumenHoy as resumenNutricion } from './modules/nutricion/lib/storage.js'
+import { resumenHoy as resumenSkincare } from './modules/skincare/lib/storage.js'
 import { hoyISO } from './core/lib/dates.js'
-import { IconTrophy, IconDumbbell, IconSalad } from './core/components/icons.jsx'
+import { IconTrophy, IconDumbbell, IconSalad, IconSparkle } from './core/components/icons.jsx'
 
 // Vistas a pantalla completa: tableros de módulo y la sesión. Mientras están
 // abiertas, la barra se esconde.
 // `gymHistory` es el historial DEL GYM: se abre desde el Historial cruzado (que
 // sí vive en la barra), igual que un tablero de módulo.
-const SIN_BARRA = ['session', 'routine', 'gym', 'nutricion', 'perfil', 'plan', 'gymHistory', 'acceso']
+const SIN_BARRA = ['session', 'routine', 'gym', 'nutricion', 'skincare', 'skincareEditor', 'perfil', 'plan', 'gymHistory', 'acceso']
 
 // Toast al finalizar. Un récord (pr) recibe el trato de récord: relleno guinda,
 // aro turquesa y destello —el momento raro—. Un guardado normal es completado y
@@ -79,14 +82,20 @@ export default function App({ sesion }) {
   // El descanso vive ACÁ y no en Session: es parte del entrenamiento, no de una
   // pantalla. Adentro de Session, navegar la desmontaba y el cronómetro moría a
   // mitad del descanso (y soltaba el wake lock). App no se desmonta nunca.
+  // El cronómetro es un primitivo COMPARTIDO: lo usa el descanso del gym y la
+  // espera de skincare (ese paso con ⏳). No se duplica: App lo instancia y lo
+  // reparte por prop a las dos pantallas. (Vive en modules/gym por historia; su
+  // hogar natural sería core, pero se comparte limpio sin moverlo — ver reporte.)
   const timer = useRestTimer()
   const gymActivo = moduloActivo('gym')
+  const skincareActivo = moduloActivo('skincare')
+  const timerActivo = gymActivo || skincareActivo
 
-  // Si apaga el gym con un descanso corriendo, el panel no puede quedar colgado
-  // ni el wake lock tomado por un módulo que ya no se muestra.
+  // Si apaga los dos módulos que lo usan con un cronómetro corriendo, el panel no
+  // puede quedar colgado ni el wake lock tomado por módulos que ya no se muestran.
   useEffect(() => {
-    if (!gymActivo) timer.detener()
-  }, [gymActivo, timer.detener])
+    if (!timerActivo) timer.detener()
+  }, [timerActivo, timer.detener])
 
   useEffect(() => {
     if (!supabase || !sesion?.user) return
@@ -125,6 +134,7 @@ export default function App({ sesion }) {
     setFechaFoco(fecha)
     if (id === 'gym') setVista('gymHistory')
     else if (id === 'nutricion') setVista('nutricion')
+    else if (id === 'skincare') setVista('skincare')
   }
 
   const finalizada = (nuevosPRs) => {
@@ -143,6 +153,7 @@ export default function App({ sesion }) {
   const tarjetas = useMemo(() => {
     const gym = resumenGym()
     const nutri = resumenNutricion(hoyISO())
+    const skin = resumenSkincare(hoyISO())
     return [
       {
         id: 'gym',
@@ -161,6 +172,15 @@ export default function App({ sesion }) {
         hecho: nutri.hecho,
         total: nutri.total,
         onAbrir: () => setVista('nutricion')
+      },
+      {
+        id: 'skincare',
+        titulo: 'Skincare',
+        detalle: skin.detalle,
+        Icon: IconSparkle,
+        hecho: skin.hecho,
+        total: skin.total,
+        onAbrir: () => setVista('skincare')
       }
     ].filter((t) => moduloActivo(t.id))
     // `rutina` y `sello` entran para recalcular al volver o al editar el plan.
@@ -172,7 +192,7 @@ export default function App({ sesion }) {
   const editores = [
     {
       id: 'gym',
-      titulo: 'Editar rutina',
+      titulo: 'Editar entrenamiento',
       detalle: 'Pesos, reps, descansos y ejercicios',
       Icon: IconDumbbell,
       onAbrir: () => setVista('routine')
@@ -183,6 +203,13 @@ export default function App({ sesion }) {
       detalle: 'Comidas, objetivos, suplementos y carbos',
       Icon: IconSalad,
       onAbrir: () => setVista('plan')
+    },
+    {
+      id: 'skincare',
+      titulo: 'Editar skincare',
+      detalle: 'Rutinas, días, pasos y tiempos de espera',
+      Icon: IconSparkle,
+      onAbrir: () => setVista('skincareEditor')
     }
   ].filter((e) => moduloActivo(e.id))
 
@@ -201,6 +228,18 @@ export default function App({ sesion }) {
           onSalir={() => (fechaFoco ? irA('history') : irA('hoy'))}
         />
       )}
+      {/* Skincare recibe el cronómetro compartido: sus pasos con espera lo
+          disparan. `key` fuerza remontar al cambiar de fecha, igual que
+          nutrición. */}
+      {vista === 'skincare' && (
+        <Skincare
+          key={fechaFoco || 'hoy'}
+          fechaInicial={fechaFoco}
+          timer={timer}
+          onSalir={() => (fechaFoco ? irA('history') : irA('hoy'))}
+        />
+      )}
+      {vista === 'skincareEditor' && <RutinasEditor onSalir={() => setVista('settings')} />}
       {vista === 'session' && diaKey && (
         <Session rutina={rutina} diaKey={diaKey} timer={timer} onSalir={() => setVista('gym')} onFinalizada={finalizada} />
       )}
@@ -232,10 +271,11 @@ export default function App({ sesion }) {
 
       {!SIN_BARRA.includes(vista) && <BottomNav vista={vista} onIr={irA} />}
 
-      {/* Cronómetro de descanso: a nivel de app, así sobrevive a navegar entre
-          pantallas. Con el gym apagado no se muestra (y el efecto de arriba ya
-          lo detuvo, así que tampoco queda corriendo). */}
-      {gymActivo && <RestTimer timer={timer} />}
+      {/* Cronómetro compartido (descanso del gym / espera de skincare): a nivel
+          de app, así sobrevive a navegar entre pantallas. Con los dos módulos
+          que lo usan apagados no se muestra (y el efecto de arriba ya lo detuvo,
+          así que tampoco queda corriendo). */}
+      {timerActivo && <RestTimer timer={timer} />}
     </div>
   )
 }
