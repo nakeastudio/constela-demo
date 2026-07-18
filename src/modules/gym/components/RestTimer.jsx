@@ -24,7 +24,7 @@ export default function RestTimer({ timer }) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 animate-in">
       <div
-        className={`mx-auto max-w-md rounded-t-3xl border-t-4 p-5 shadow-2xl ${
+        className={`mx-auto max-w-md rounded-t-3xl border-x-2 border-t-2 p-5 shadow-2xl ${
           terminado ? 'border-completo bg-completo text-contraste' : 'border-marca bg-superficie'
         }`}
       >
