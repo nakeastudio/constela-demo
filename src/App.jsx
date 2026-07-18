@@ -37,17 +37,24 @@ import { IconTrophy, IconDumbbell, IconSalad } from './core/components/icons.jsx
 // sí vive en la barra), igual que un tablero de módulo.
 const SIN_BARRA = ['session', 'routine', 'gym', 'nutricion', 'perfil', 'plan', 'gymHistory', 'acceso']
 
-// Toast simple para anunciar PRs al finalizar
-function Toast({ mensaje, onClose }) {
-  if (!mensaje) return null
+// Toast al finalizar. Un récord (pr) recibe el trato de récord: relleno guinda,
+// aro turquesa y destello —el momento raro—. Un guardado normal es completado y
+// va en turquesa liso. El fracaso no existe acá: nada se pinta en rojo.
+function Toast({ toast, onClose }) {
+  if (!toast?.mensaje) return null
+  const esPR = toast.tipo === 'pr'
   return (
     <div className="fixed inset-x-0 top-4 z-50 mx-auto flex max-w-md justify-center px-4">
       <button
         onClick={onClose}
-        className="animate-in flex items-center gap-2 rounded-2xl bg-completo px-5 py-3 text-center text-sm font-bold text-fondo shadow-flotante"
+        className={`record-pop flex items-center gap-2 rounded-2xl px-5 py-3 text-center text-sm font-bold shadow-flotante ${
+          esPR
+            ? 'record-shine relative overflow-hidden bg-marca-fuerte text-contraste-fuerte ring-2 ring-completo/70'
+            : 'bg-completo text-contraste'
+        }`}
       >
         <IconTrophy className="h-5 w-5 shrink-0" />
-        {mensaje}
+        {toast.mensaje}
       </button>
     </div>
   )
@@ -62,7 +69,7 @@ export default function App({ sesion }) {
   const [rol, setRol] = useState(null)
   const [vista, setVista] = useState('hoy')
   const [diaKey, setDiaKey] = useState(null)
-  const [toast, setToast] = useState('')
+  const [toast, setToast] = useState({ mensaje: '', tipo: 'ok' })
   // Cambia al volver a Hoy: fuerza recalcular los resúmenes de las tarjetas.
   const [sello, setSello] = useState(0)
   // Fecha con la que se abre una pantalla de módulo desde el Historial.
@@ -122,11 +129,11 @@ export default function App({ sesion }) {
 
   const finalizada = (nuevosPRs) => {
     if (nuevosPRs && nuevosPRs.length > 0) {
-      setToast(`¡${nuevosPRs.length} récord(s) nuevo(s)! Bien ahí`)
-      setTimeout(() => setToast(''), 4000)
+      setToast({ mensaje: `¡${nuevosPRs.length} récord(s) nuevo(s)! Bien ahí`, tipo: 'pr' })
+      setTimeout(() => setToast({ mensaje: '', tipo: 'ok' }), 4000)
     } else {
-      setToast('Entrenamiento guardado')
-      setTimeout(() => setToast(''), 2500)
+      setToast({ mensaje: 'Entrenamiento guardado', tipo: 'ok' })
+      setTimeout(() => setToast({ mensaje: '', tipo: 'ok' }), 2500)
     }
     irA('hoy')
   }
@@ -181,7 +188,7 @@ export default function App({ sesion }) {
 
   return (
     <div className="mx-auto min-h-full max-w-md bg-fondo text-texto">
-      <Toast mensaje={toast} onClose={() => setToast('')} />
+      <Toast toast={toast} onClose={() => setToast({ mensaje: '', tipo: 'ok' })} />
 
       {vista === 'hoy' && <Hoy tarjetas={tarjetas} onIrAjustes={() => setVista('settings')} />}
       {vista === 'gym' && <Home rutina={rutina} onSelectDia={seleccionarDia} onSalir={() => irA('hoy')} />}

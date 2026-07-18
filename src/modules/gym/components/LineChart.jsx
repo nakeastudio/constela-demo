@@ -26,12 +26,13 @@ export default function LineChart({ puntos, alto = 140, sufijo = '' }) {
       <svg width={ancho} height={alto} className="mx-auto block">
         {/* Línea base */}
         <line x1={padX} y1={alto - padY} x2={ancho - padX} y2={alto - padY} className="stroke-borde/40" strokeWidth="1" />
-        {/* Trazo */}
-        <path d={linea} fill="none" className="stroke-marca" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+        {/* Trazo: la evolución es PROGRESO, así que va en turquesa (completo),
+            no en la marca. */}
+        <path d={linea} fill="none" className="stroke-completo" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
         {/* Puntos + valores */}
         {puntos.map((p, i) => (
           <g key={i}>
-            <circle cx={px(i)} cy={py(p.y)} r="4" className="fill-marca" />
+            <circle cx={px(i)} cy={py(p.y)} r="4" className="fill-completo" />
             <text x={px(i)} y={py(p.y) - 8} textAnchor="middle" className="fill-texto-soft" fontSize="10" fontWeight="700">
               {p.y}
               {sufijo}

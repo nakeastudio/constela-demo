@@ -84,7 +84,7 @@ function TiraPasos({ pasos, actual, onIr, completo }) {
             // el "que entren todos". Con manos mojadas, un punto de 20px no.
             className={`flex h-11 min-w-[44px] flex-1 shrink-0 items-center justify-center rounded-xl text-xs font-bold transition-colors ${
               esActual
-                ? 'bg-marca text-contraste'
+                ? 'bg-marca-fuerte text-contraste-fuerte'
                 : hecho
                   ? 'bg-completo/20 text-completo'
                   : 'bg-superficie-alta text-texto-soft'
@@ -291,10 +291,12 @@ export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada }
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-sm font-bold leading-tight tracking-tight text-texto">{dia.nombre}</h1>
             <div className="mt-1.5 flex items-center gap-2">
+              {/* Progreso = turquesa. El avance de la sesión es completado, no
+                  marca. */}
               <div className="h-2 flex-1 overflow-hidden rounded-full bg-superficie-alta">
-                <div className="h-full rounded-full bg-marca transition-all" style={{ width: `${progreso}%` }} />
+                <div className="h-full rounded-full bg-completo transition-all" style={{ width: `${progreso}%` }} />
               </div>
-              <span className="text-xs font-bold tabular-nums text-marca">{hechos}/{totalSets}</span>
+              <span className="text-xs font-bold tabular-nums text-completo">{hechos}/{totalSets}</span>
             </div>
           </div>
         </div>
@@ -325,7 +327,7 @@ export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada }
             disabled={!haySiguiente}
             aria-label="Paso siguiente"
             className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors active:scale-90 disabled:opacity-30 ${
-              listoParaSeguir && haySiguiente ? 'bg-marca text-contraste' : 'bg-superficie-alta text-texto'
+              listoParaSeguir && haySiguiente ? 'bg-marca-fuerte text-contraste-fuerte' : 'bg-superficie-alta text-texto'
             }`}
           >
             <IconChevronRight className="h-5 w-5" />
@@ -348,7 +350,7 @@ export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada }
         {actual.tipo === 'calentamiento' && (
           <div className="rounded-2xl border border-borde/25 bg-superficie p-4 shadow-suave">
             <h2 className="flex items-center gap-2 font-bold text-texto">
-              <IconFlame className="h-5 w-5 shrink-0 text-acento" /> Calentamiento y activación
+              <IconFlame className="h-5 w-5 shrink-0 text-marca" /> Calentamiento y activación
             </h2>
             {dia.calentamiento && <p className="mt-2 text-sm text-texto-soft">{dia.calentamiento}</p>}
             {(dia.activacion || []).length > 0 && (

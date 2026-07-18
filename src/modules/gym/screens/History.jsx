@@ -6,7 +6,8 @@ import LineChart from '../components/LineChart.jsx'
 import Calendar from '../components/Calendar.jsx'
 import { getSessions, getPRs, deleteSession } from '../lib/storage.js'
 import { fmtLargo, fmtCorto, nombreDiaSemana } from '../../../core/lib/dates.js'
-import { IconChevronLeft, IconChevronDown, IconTrend, IconTrophy, IconTrash, IconRun } from '../../../core/components/icons.jsx'
+import { IconChevronLeft, IconChevronDown, IconTrend, IconTrash, IconRun } from '../../../core/components/icons.jsx'
+import Record from '../../../core/components/Record.jsx'
 
 export default function History({ fecha, onSalir }) {
   const [sessions, setSessions] = useState(() => [...getSessions()].reverse()) // más reciente primero
@@ -89,9 +90,7 @@ export default function History({ fecha, onSalir }) {
         {ejSel && <LineChart puntos={puntos} sufijo="" />}
         {ejSel && prs[ejSel] && (
           <div className="mt-2 flex justify-center">
-            <p className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-acento-fuerte px-2.5 py-1 text-xs font-semibold text-contraste-fuerte">
-              <IconTrophy className="h-4 w-4 shrink-0" /> Récord: {prs[ejSel].maxPeso}kg · {prs[ejSel].maxReps} reps
-            </p>
+            <Record>Récord: {prs[ejSel].maxPeso}kg · {prs[ejSel].maxReps} reps</Record>
           </div>
         )}
       </section>

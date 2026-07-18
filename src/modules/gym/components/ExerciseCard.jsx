@@ -4,7 +4,8 @@
 // Sin steppers +/- por serie: tabla limpia, nada se corta a 320-360px.
 import React from 'react'
 import { ejercicioCompleto } from '../lib/session.js'
-import { IconCheck, IconPlus, IconMinus, IconTrophy } from '../../../core/components/icons.jsx'
+import { IconCheck, IconPlus, IconMinus } from '../../../core/components/icons.jsx'
+import Record from '../../../core/components/Record.jsx'
 
 // Celda numérica tipeable (input grande, abre teclado numérico en el cel)
 function Celda({ value, placeholder, onChange, done }) {
@@ -82,10 +83,11 @@ export default function ExerciseCard({ ejercicio, anteriores = [], aprox = [], o
       </div>
 
       {prInfo && (
-        <p className="mb-2 inline-flex max-w-full items-center gap-1.5 rounded-full bg-acento-fuerte px-2.5 py-1 text-xs font-semibold text-contraste-fuerte">
-          <IconTrophy className="h-4 w-4 shrink-0" />
-          Récord: {prInfo.maxPeso > 0 ? `${prInfo.maxPeso}kg` : ''} {prInfo.maxReps > 0 ? `· ${prInfo.maxReps} reps` : ''}
-        </p>
+        <div className="mb-2">
+          <Record>
+            Récord: {prInfo.maxPeso > 0 ? `${prInfo.maxPeso}kg` : ''} {prInfo.maxReps > 0 ? `· ${prInfo.maxReps} reps` : ''}
+          </Record>
+        </div>
       )}
 
       {/* Primero la aproximación: es lo que se hace antes de las series reales. */}

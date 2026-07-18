@@ -17,6 +17,24 @@ export default function AuthGate({ children }) {
   const [sesion, setSesion] = useState(null)
 
   useEffect(() => {
+    // ── Bypass de desarrollo ────────────────────────────────────────────────
+    // Cada magic-link cuesta un correo, y en `pnpm dev` se entra decenas de
+    // veces por día. Solo en DEV se salta la autenticación con un pseudo-usuario
+    // estable, así el árbol monta directo. `import.meta.env.DEV` es de tiempo de
+    // compilación: Vite lo reemplaza por `false` en el build de producción y
+    // elimina esta rama entera (verificado con grep sobre dist/). El uid es fijo
+    // para que el namespacing de storage (appgym:u:<uid>:…) sea coherente y los
+    // datos de dev no choquen con un login real. La ruta real de producción
+    // (abajo) queda intacta.
+    if (import.meta.env.DEV) {
+      const sesionDev = { user: { id: 'dev-usuario-local', email: 'dev@constela.local' } }
+      iniciarSync(sesionDev.user.id)
+      reclamarLegado(sesionDev.user.id, clavesSincronizables())
+      setSesion(sesionDev)
+      setFase('dentro')
+      return
+    }
+
     if (!hayBackend) { setFase('fuera'); return }
 
     let vivo = true

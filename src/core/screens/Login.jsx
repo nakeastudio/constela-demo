@@ -9,7 +9,8 @@
 // mail no está invitado, no llega ningún link.
 import React, { useState } from 'react'
 import { enviarMagicLink, hayBackend } from '../lib/supabase.js'
-import { IconMeal, IconCheck } from '../components/icons.jsx'
+import { IconCheck } from '../components/icons.jsx'
+import ConstelaMark from '../components/Constela.jsx'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -48,8 +49,8 @@ export default function Login() {
   if (fase === 'enviado') {
     return (
       <div className="animate-in mx-auto flex min-h-full max-w-md flex-col items-center justify-center gap-4 p-8 text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-completo/15 text-completo">
-          <IconCheck className="h-7 w-7" />
+        <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-completo/15 text-completo">
+          <IconCheck className="h-8 w-8" />
         </span>
         <h1 className="text-xl font-extrabold tracking-tight text-texto">Revisa tu correo</h1>
         <p className="text-sm font-medium leading-relaxed text-texto-soft">
@@ -67,13 +68,16 @@ export default function Login() {
   }
 
   return (
-    <div className="animate-in mx-auto flex min-h-full max-w-md flex-col justify-center gap-6 p-8">
+    <div className="animate-in mx-auto flex min-h-full max-w-md flex-col justify-center gap-8 p-8">
       <header className="text-center">
-        <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-marca/10 text-marca">
-          <IconMeal className="h-7 w-7" />
+        {/* La constelación es la marca: puntos y líneas que ascienden. En guinda,
+            a tono con el favicon. Reemplaza el ícono de cubiertos: esto no es
+            una app de comida, es el día como constelación de hábitos. */}
+        <span className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-marca/10 text-marca ring-1 ring-marca/20">
+          <ConstelaMark className="h-12 w-12" titulo="Constela" />
         </span>
-        <h1 className="text-2xl font-extrabold tracking-tight text-texto">Constela</h1>
-        <p className="mt-1 text-sm font-medium text-texto-soft">Constancia &gt; perfección.</p>
+        <h1 className="text-3xl font-extrabold tracking-tight text-texto">Constela</h1>
+        <p className="mt-1.5 text-sm font-medium text-texto-soft">Constancia &gt; perfección.</p>
       </header>
 
       <form onSubmit={enviar} className="space-y-3">
@@ -94,7 +98,7 @@ export default function Login() {
         <button
           type="submit"
           disabled={fase === 'enviando' || !email.trim()}
-          className="min-h-[44px] w-full rounded-xl bg-marca py-3 text-sm font-bold text-contraste active:scale-95 disabled:opacity-50"
+          className="min-h-[44px] w-full rounded-xl bg-marca-fuerte py-3 text-sm font-bold text-contraste-fuerte transition-transform active:scale-95 disabled:opacity-50"
         >
           {fase === 'enviando' ? 'Enviando…' : 'Enviarme el enlace'}
         </button>

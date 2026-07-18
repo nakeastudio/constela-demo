@@ -84,9 +84,9 @@ export default function Calendar({ onSelectFecha }) {
                     'flex aspect-square items-center justify-center rounded-lg text-xs font-semibold transition-colors',
                     clickable ? 'active:scale-90' : 'cursor-default',
                     !celda.mesActual ? 'text-texto-soft' : 'text-texto',
-                    // Día entrenado: punto encendido (relleno). Hoy: solo el aro.
-                    // `marca` y `completo` son el mismo turquesa, así que la
-                    // diferencia la hace el relleno, no el color.
+                    // Día entrenado: relleno turquesa (completado). Hoy: aro
+                    // guinda (la marca). Dos colores distintos, dos ideas
+                    // distintas: lo hecho vs. dónde estás parada.
                     trained ? 'bg-completo font-bold text-contraste' : 'bg-fondo',
                     esHoy ? 'ring-2 ring-marca' : '',
                     trained && esHoy ? 'ring-offset-2 ring-offset-superficie' : ''

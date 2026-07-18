@@ -25,11 +25,17 @@
   /* Bordes — nunca texto: no llega a 4.5:1 sobre el fondo */
   --borde: 134 98 110; /* #86626E smoky rose */
 
-  /* Acentos */
-  --marca: 52 209 191; /* #34D1BF turquesa */
-  --completo: 52 209 191; /* #34D1BF turquesa */
-  --acento: 232 101 127; /* #E8657F magenta legible */
-  --acento-fuerte: 209 52 91; /* #D1345B magenta saturado (rellenos) */
+  /* Acentos.
+     La MARCA es guinda: identidad, CTAs, nav activa, el logo, los momentos.
+     `marca` es el tono LEGIBLE (texto/ícono/borde/aro): #E8657F sobre el fondo
+     casi-negro da 6.01:1 (AA). El guinda saturado #D1345B falla como texto
+     (3.97:1), así que vive en `marca-fuerte`, solo para RELLENOS con tinta
+     blanca (`contraste-fuerte`, 4.82:1). El TURQUESA se retira a una sola cosa:
+     lo COMPLETADO. Así marca (guinda) y completo (turquesa) dejan de ser el
+     mismo color y ninguna pantalla queda monótona. */
+  --marca: 232 101 127; /* #E8657F guinda legible (texto/borde/aro) */
+  --marca-fuerte: 209 52 91; /* #D1345B guinda saturado (rellenos, tinta blanca) */
+  --completo: 52 209 191; /* #34D1BF turquesa — SOLO progreso/completado */
   --cardio: 143 162 237; /* #8FA2ED azure legible */
   --cardio-fuerte: 52 84 209; /* #3454D1 azure saturado (rellenos) */
 
@@ -69,10 +75,9 @@ html:not(.dark) {
 
   --borde: 134 98 110; /* #86626E */
 
-  --marca: 14 124 111; /* #0E7C6F turquesa oscurecido para legibilidad */
-  --completo: 14 124 111; /* #0E7C6F */
-  --acento: 176 42 76; /* #B02A4C */
-  --acento-fuerte: 209 52 91; /* #D1345B */
+  --marca: 176 42 76; /* #B02A4C guinda legible (6.13:1 sobre fondo claro) */
+  --marca-fuerte: 209 52 91; /* #D1345B guinda saturado (rellenos, tinta blanca) */
+  --completo: 14 124 111; /* #0E7C6F turquesa oscurecido — SOLO progreso/completado */
   --cardio: 42 68 168; /* #2A44A8 */
   --cardio-fuerte: 52 84 209; /* #3454D1 */
 
@@ -153,6 +158,68 @@ input[type='number'] {
 }
 .animate-pulse-ring {
   animation: pulseRing 1s ease-in-out infinite;
+}
+
+/* Constelación: las estrellas titilan MUY leve y desfasadas. Solo opacity —
+   barato en GPU. Es el motivo del login y del vacío: el día como constelación
+   de hábitos chicos. */
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.star-twinkle {
+  animation: twinkle 3.2s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Récord: un destello que cruza UNA vez al aparecer. Un PR es raro y ganado,
+   así que se celebra al montarse y no repite (nada de brillito perpetuo).
+   El barrido es turquesa sobre el relleno guinda: los dos colores insignia se
+   cruzan solo en el momento del récord. */
+@keyframes shineSweep {
+  from {
+    transform: translateX(-140%) skewX(-18deg);
+  }
+  to {
+    transform: translateX(320%) skewX(-18deg);
+  }
+}
+.record-shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  background: linear-gradient(
+    100deg,
+    transparent 35%,
+    rgb(var(--completo) / 0.6) 50%,
+    transparent 65%
+  );
+  width: 45%;
+  animation: shineSweep 1s ease-out 0.15s 1 both;
+  pointer-events: none;
+}
+
+/* Entrada celebratoria del récord: escala desde 0.92 (nunca desde 0). */
+@keyframes recordPop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.record-pop {
+  animation: recordPop 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* Respeta la preferencia de movimiento reducido del sistema. */

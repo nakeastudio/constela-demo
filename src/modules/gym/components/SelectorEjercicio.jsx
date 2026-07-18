@@ -142,7 +142,7 @@ export default function SelectorEjercicio({ seccion, onElegir, onCerrar }) {
             </p>
             <button
               onClick={() => setAMano(true)}
-              className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-marca px-5 text-sm font-bold text-contraste active:scale-95"
+              className="flex min-h-[44px] items-center gap-1.5 rounded-xl bg-marca-fuerte px-5 text-sm font-bold text-contraste-fuerte active:scale-95"
             >
               <IconPlus className="h-4 w-4" /> Cargarlo a mano
             </button>
@@ -255,7 +255,7 @@ function AltaAMano({ nombreInicial, grupoInicial, inputBase, onGuardar, onVolver
         <button
           onClick={() => onGuardar({ nombre: nombre.trim(), grupo })}
           disabled={!nombre.trim()}
-          className="min-h-[44px] w-full rounded-xl bg-marca text-sm font-bold text-contraste active:scale-95 disabled:opacity-50"
+          className="min-h-[44px] w-full rounded-xl bg-marca-fuerte text-sm font-bold text-contraste-fuerte active:scale-95 disabled:opacity-50"
         >
           Agregar ejercicio
         </button>

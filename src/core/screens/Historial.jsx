@@ -30,7 +30,7 @@ export default function Historial({ onAbrirModulo, onIrAjustes }) {
       <div className="animate-in p-4 pb-24">
         <h1 className="pt-2 text-2xl font-extrabold tracking-tight text-texto">Historial</h1>
         <Vacio
-          mensaje="No hay módulos prendidos. Prendé alguno en Ajustes para ver tu historial."
+          mensaje="No hay módulos activos. Activa alguno en Ajustes para ver tu historial."
           onAjustes={onIrAjustes}
         />
       </div>

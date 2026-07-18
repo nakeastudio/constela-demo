@@ -155,7 +155,7 @@ function TiraSemana({ fecha, onIr }) {
               aria-label={`${nombreDiaSemana(f)} ${f}`}
               className={`flex h-11 flex-1 flex-col items-center justify-center rounded-xl text-[11px] font-bold transition-colors ${
                 activo
-                  ? 'bg-marca text-contraste'
+                  ? 'bg-marca-fuerte text-contraste-fuerte'
                   : esHoy
                     ? 'bg-superficie-alta text-marca'
                     : 'bg-superficie text-texto-soft'

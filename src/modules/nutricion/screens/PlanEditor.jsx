@@ -141,7 +141,7 @@ export default function PlanEditor({ onSalir }) {
             key={k}
             onClick={() => setDiaSel(k)}
             className={`min-h-[44px] rounded-xl px-3 text-sm font-bold transition-colors ${
-              diaSel === k ? 'bg-marca text-contraste shadow-flotante' : 'bg-superficie-alta text-texto-soft'
+              diaSel === k ? 'bg-marca-fuerte text-contraste-fuerte shadow-flotante' : 'bg-superficie-alta text-texto-soft'
             }`}
           >
             {ETIQUETA_CORTA[k]}
@@ -370,7 +370,7 @@ export default function PlanEditor({ onSalir }) {
               placeholder="Pega aquí el JSON del plan…"
               className={`w-full font-mono text-[11px] text-texto ${inputBase}`}
             />
-            <button onClick={aplicarImport} disabled={!importText.trim()} className="min-h-[44px] w-full rounded-xl bg-marca text-sm font-bold text-contraste active:scale-95 disabled:opacity-50">
+            <button onClick={aplicarImport} disabled={!importText.trim()} className="min-h-[44px] w-full rounded-xl bg-marca-fuerte text-sm font-bold text-contraste-fuerte active:scale-95 disabled:opacity-50">
               Importar y reemplazar plan
             </button>
             <p className="text-[11px] text-texto-soft">Reemplaza todo el plan. Tus registros diarios no se tocan.</p>

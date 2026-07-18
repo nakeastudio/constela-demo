@@ -29,11 +29,12 @@ export default {
         borde: token('borde'),
 
         // ---- Acentos ----
-        marca: token('marca'), // turquesa: primario
-        completo: token('completo'), // turquesa: estados completados
-        acento: token('acento'), // magenta legible: récords y destacados
-        'acento-fuerte': token('acento-fuerte'), // magenta saturado: rellenos
-        'contraste-fuerte': token('contraste-fuerte'), // tinta sobre rellenos -fuerte
+        // Marca = guinda (identidad). `marca` legible para texto/borde/aro;
+        // `marca-fuerte` es el relleno saturado con tinta blanca.
+        marca: token('marca'), // guinda legible: texto, íconos, bordes, nav activa
+        'marca-fuerte': token('marca-fuerte'), // guinda saturado: rellenos de CTA
+        completo: token('completo'), // turquesa: SOLO progreso y estados completados
+        'contraste-fuerte': token('contraste-fuerte'), // tinta blanca sobre rellenos -fuerte
         cardio: token('cardio'), // azure legible
         'cardio-fuerte': token('cardio-fuerte'), // azure saturado: rellenos
         peligro: token('peligro'), // solo acciones destructivas

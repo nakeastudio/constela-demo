@@ -84,7 +84,7 @@ export default function RestTimer({ timer }) {
               <button
                 onClick={detener}
                 className={`col-span-2 flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-bold active:scale-95 ${
-                  terminado ? 'bg-superficie text-completo' : 'bg-marca text-contraste'
+                  terminado ? 'bg-superficie text-completo' : 'bg-marca-fuerte text-contraste-fuerte'
                 }`}
               >
                 {terminado && <IconCheck className="h-4 w-4" />}

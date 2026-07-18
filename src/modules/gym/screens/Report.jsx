@@ -133,7 +133,7 @@ export default function Report({ onSalir }) {
 
         {!gymActivo && !nutricionActiva && (
           <p className="py-8 text-center text-sm text-texto-soft">
-            No hay módulos prendidos. Prendé alguno en Ajustes para ver tu semana.
+            No hay módulos activos. Activa alguno en Ajustes para ver tu semana.
           </p>
         )}
 
@@ -146,17 +146,19 @@ export default function Report({ onSalir }) {
               <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-texto-soft">Días entrenados ({reporte.diasEntrenados.length}/4)</h3>
               <div className="flex flex-wrap gap-2">
                 {reporte.diasEntrenados.map((d) => (
-                  <span key={d.fecha} className="rounded-full bg-marca/10 px-3 py-1 text-xs font-semibold text-marca">
+                  <span key={d.fecha} className="rounded-full bg-completo/10 px-3 py-1 text-xs font-semibold text-completo">
                     {nombreDiaSemana(d.fecha)} · {d.nombre.replace(/^Día \d+ — /, '')}
                   </span>
                 ))}
               </div>
             </section>
 
-            {/* PRs destacados */}
+            {/* PRs destacados: el momento raro. Guinda (marca) y turquesa
+                (completado) se cruzan en un degradé con aro turquesa y un
+                destello al aparecer — el trato de récord, no solo un color. */}
             {reporte.prs.length > 0 && (
-              <section className="rounded-xl bg-gradient-to-r from-acento/10 to-marca/10 p-3">
-                <h3 className="mb-1 flex items-center gap-1.5 text-sm font-bold text-acento">
+              <section className="record-shine relative overflow-hidden rounded-xl bg-gradient-to-r from-marca-fuerte/15 to-completo/15 p-3 ring-1 ring-completo/30">
+                <h3 className="mb-1 flex items-center gap-1.5 text-sm font-bold text-marca">
                   <IconTrophy className="h-4 w-4" /> Récords logrados
                 </h3>
                 <ul className="space-y-0.5 text-sm text-texto">
@@ -269,7 +271,7 @@ export default function Report({ onSalir }) {
               <div className="space-y-2">
                 {/* El promedio manda: va primero y en grande. */}
                 <div className="rounded-xl bg-fondo p-3">
-                  <p className="text-2xl font-extrabold tabular-nums text-marca">{nutri.adherenciaTotal}%</p>
+                  <p className="text-2xl font-extrabold tabular-nums text-completo">{nutri.adherenciaTotal}%</p>
                   <p className="text-xs font-medium text-texto-soft">
                     adherencia de la semana · {nutri.hechasTotal}/{nutri.planificadasTotal} comidas
                   </p>
@@ -296,7 +298,7 @@ export default function Report({ onSalir }) {
                   </div>
                   <div className="rounded-xl bg-fondo p-2 text-center">
                     <p className="flex items-center justify-center gap-1 text-sm font-extrabold tabular-nums text-texto">
-                      <IconPill className="h-3.5 w-3.5 text-marca" />{nutri.rachaSuplementos}
+                      <IconPill className="h-3.5 w-3.5 text-completo" />{nutri.rachaSuplementos}
                     </p>
                     <p className="text-[10px] font-medium text-texto-soft">racha suplementos</p>
                   </div>
@@ -331,7 +333,7 @@ export default function Report({ onSalir }) {
           con solo ese texto. No se llama a ninguna IA desde acá. */}
       <button
         onClick={copiarParaIA}
-        className="mt-4 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl bg-completo py-4 font-extrabold text-contraste shadow-flotante active:scale-95"
+        className="mt-4 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl bg-marca-fuerte py-4 font-extrabold text-contraste-fuerte shadow-flotante active:scale-95"
       >
         <IconNote className="h-5 w-5" />
         {copiado || 'Copiar reporte para IA'}

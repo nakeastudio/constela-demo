@@ -180,7 +180,7 @@ export default function Routine({ rutina, onChange, onSalir }) {
             key={k}
             onClick={() => setDiaSel(k)}
             className={`rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
-              diaSel === k ? 'bg-marca text-contraste shadow-flotante' : 'bg-superficie-alta text-texto-soft'
+              diaSel === k ? 'bg-marca-fuerte text-contraste-fuerte shadow-flotante' : 'bg-superficie-alta text-texto-soft'
             }`}
           >
             D{i + 1}
@@ -341,7 +341,7 @@ export default function Routine({ rutina, onChange, onSalir }) {
               placeholder='Pega aquí el JSON de la rutina…'
               className={`w-full font-mono text-[11px] text-texto ${inputBase}`}
             />
-            <button onClick={aplicarImport} disabled={!importText.trim()} className="w-full rounded-xl bg-marca py-2.5 text-sm font-bold text-contraste active:scale-95 disabled:opacity-50">
+            <button onClick={aplicarImport} disabled={!importText.trim()} className="w-full rounded-xl bg-marca-fuerte py-2.5 text-sm font-bold text-contraste-fuerte active:scale-95 disabled:opacity-50">
               Importar y reemplazar rutina
             </button>
             <p className="text-[11px] text-texto-soft">Reemplaza toda la rutina. Tus sesiones del historial no se tocan.</p>

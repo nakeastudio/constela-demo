@@ -112,7 +112,7 @@ export default function Acceso({ onSalir }) {
         <button
           type="submit"
           disabled={!email.trim()}
-          className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl bg-marca px-3 text-sm font-bold text-contraste active:scale-95 disabled:opacity-50"
+          className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl bg-marca-fuerte px-3 text-sm font-bold text-contraste-fuerte active:scale-95 disabled:opacity-50"
         >
           <IconPlus className="h-4 w-4" /> Invitar
         </button>
