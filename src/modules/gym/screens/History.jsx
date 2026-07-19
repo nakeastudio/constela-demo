@@ -8,6 +8,7 @@ import { getSessions, getPRs, deleteSession } from '../lib/storage.js'
 import { fmtLargo, fmtCorto, nombreDiaSemana } from '../../../core/lib/dates.js'
 import { IconChevronLeft, IconChevronDown, IconTrend, IconTrash, IconRun } from '../../../core/components/icons.jsx'
 import Record from '../../../core/components/Record.jsx'
+import { confirmar } from '../../../core/components/Hoja.jsx'
 
 export default function History({ fecha, onSalir }) {
   const [sessions, setSessions] = useState(() => [...getSessions()].reverse()) // más reciente primero
@@ -35,8 +36,14 @@ export default function History({ fecha, onSalir }) {
       .filter(Boolean)
   }, [ejSel])
 
-  const borrar = (id) => {
-    if (!confirm('¿Borrar esta sesión del historial? No se puede deshacer.')) return
+  const borrar = async (id) => {
+    const ok = await confirmar({
+      titulo: '¿Borrar esta sesión?',
+      cuerpo: 'Se quita del historial. No se puede deshacer.',
+      accion: 'Borrar',
+      peligro: true
+    })
+    if (!ok) return
     deleteSession(id)
     setSessions([...getSessions()].reverse())
   }

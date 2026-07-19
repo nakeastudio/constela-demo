@@ -23,6 +23,7 @@ import Settings from './core/screens/Settings.jsx'
 import Perfil from './core/screens/Perfil.jsx'
 import Acceso from './core/screens/Acceso.jsx'
 import BottomNav from './core/layout/BottomNav.jsx'
+import Hoja from './core/components/Hoja.jsx'
 import { moduloActivo } from './core/lib/modulos.js'
 import { supabase, cerrarSesion } from './core/lib/supabase.js'
 import { detenerSync } from './core/lib/sync.js'
@@ -216,6 +217,10 @@ export default function App({ sesion }) {
   return (
     <div className="mx-auto min-h-full max-w-md bg-fondo text-texto">
       <Toast toast={toast} onClose={() => setToast({ mensaje: '', tipo: 'ok' })} />
+      {/* Confirmaciones y avisos (bottom sheet) montados una sola vez: se
+          disparan por API imperativa desde cualquier pantalla. */}
+      <Hoja />
+
 
       {vista === 'hoy' && <Hoy tarjetas={tarjetas} onIrAjustes={() => setVista('settings')} />}
       {vista === 'gym' && <Home rutina={rutina} onSelectDia={seleccionarDia} onSalir={() => irA('hoy')} />}

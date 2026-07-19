@@ -48,6 +48,12 @@
   /* Destructivo. Separado de `acento` a propósito: un récord y "borrar para
      siempre" no pueden ser el mismo color. #FF6A4D / superficie = 6.31:1 (AA). */
   --peligro: 255 106 77; /* #FF6A4D rojo-naranja */
+  /* Relleno destructivo (mismo patrón que marca-fuerte/cardio-fuerte): un tono
+     fijo en ambos temas para el botón "Borrar" de la hoja de confirmación. NO
+     cambia con el tema, así que su tinta tampoco: blanco fijo sobre #C2410C =
+     5.18:1 (AA) en ambos. El naranja-quemado se distingue del guinda de la marca
+     —borrar nunca se confunde con confirmar algo benigno—. */
+  --peligro-fuerte: 194 65 12; /* #C2410C rojo-naranja saturado (rellenos, tinta blanca) */
 
   /* Tintes de categoría de comida (nutrición).
      Los cuatro son claros y NO cambian con el tema — son los hexes elegidos.

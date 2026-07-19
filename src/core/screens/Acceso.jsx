@@ -11,6 +11,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { IconChevronLeft, IconPlus, IconTrash, IconUser } from '../components/icons.jsx'
+import { confirmar } from '../components/Hoja.jsx'
 
 // El error del proveedor nunca se muestra crudo: viene en inglés y no le sirve a
 // nadie. Se traduce lo accionable y el resto va a consola.
@@ -60,7 +61,13 @@ export default function Acceso({ onSalir }) {
   }
 
   const quitar = async (mail) => {
-    if (!confirm(`¿Quitar el acceso de ${mail}? No borra sus datos.`)) return
+    const ok = await confirmar({
+      titulo: '¿Quitar el acceso?',
+      cuerpo: `${mail} ya no podrá entrar. No borra sus datos.`,
+      accion: 'Quitar acceso',
+      peligro: true
+    })
+    if (!ok) return
     const { error: e2 } = await supabase.from('invitaciones').delete().eq('email', mail)
     if (e2) { setError(mensaje(e2)); return }
     setError('')

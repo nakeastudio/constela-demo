@@ -9,6 +9,7 @@ import React, { useState } from 'react'
 import { GRUPO_LABEL, clavesDia, siguienteClaveDia, diaVacio, cardioVacio, validarRutina } from '../data/rutina.js'
 import { saveRutina, resetRutina } from '../lib/storage.js'
 import { IconChevronLeft, IconChevronUp, IconChevronDown, IconPlus, IconTrash, IconUpload } from '../../../core/components/icons.jsx'
+import { confirmar, avisar } from '../../../core/components/Hoja.jsx'
 import Toggle from '../../../core/components/Toggle.jsx'
 import SelectorEjercicio from '../components/SelectorEjercicio.jsx'
 
@@ -126,9 +127,15 @@ export default function Routine({ rutina, onChange, onSalir }) {
     persistir({ ...r, [key]: diaVacio(num) })
     setDiaSel(key)
   }
-  const eliminarDia = () => {
+  const eliminarDia = async () => {
     if (dias.length <= 1) return
-    if (!confirm(`¿Eliminar "${dia.nombre}"? No borra sesiones ya registradas.`)) return
+    const ok = await confirmar({
+      titulo: `¿Eliminar "${dia.nombre}"?`,
+      cuerpo: 'No borra sesiones ya registradas.',
+      accion: 'Eliminar',
+      peligro: true
+    })
+    if (!ok) return
     const nuevo = { ...r }
     delete nuevo[diaSel]
     persistir(nuevo)
@@ -147,14 +154,19 @@ export default function Routine({ rutina, onChange, onSalir }) {
       setDiaSel(clavesDia(limpia)[0])
       setImportText('')
       setPanel(null)
-      alert('Rutina importada y guardada.')
+      avisar({ titulo: 'Rutina importada', mensaje: 'Los cambios quedaron guardados.', tono: 'ok' })
     } catch (e) {
-      alert('JSON inválido: ' + e.message)
+      avisar({ titulo: 'No se pudo importar', mensaje: 'El texto no es un JSON válido: ' + e.message })
     }
   }
 
-  const resetear = () => {
-    if (!confirm('¿Restaurar la rutina original? Perderás tus cambios al plan (no tus sesiones).')) return
+  const resetear = async () => {
+    const ok = await confirmar({
+      titulo: '¿Restaurar la rutina original?',
+      cuerpo: 'Perderás tus cambios al plan (no tus sesiones).',
+      accion: 'Restaurar'
+    })
+    if (!ok) return
     const def = resetRutina()
     setR(def)
     setDiaSel(clavesDia(def)[0])

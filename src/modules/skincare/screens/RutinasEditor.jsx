@@ -27,6 +27,7 @@ import {
   IconTrash,
   IconUpload
 } from '../../../core/components/icons.jsx'
+import { confirmar, avisar } from '../../../core/components/Hoja.jsx'
 
 // La espera se guarda SIEMPRE en segundos; la unidad de entrada (min o seg) es
 // una afordancia del editor, elegible por paso. Se convierte al guardar, así
@@ -80,9 +81,15 @@ export default function RutinasEditor({ onSalir }) {
     persistir({ ...datos, rutinas: [...rutinas, nueva] })
     setRutSel(nueva.id)
   }
-  const eliminarRutina = () => {
+  const eliminarRutina = async () => {
     if (rutinas.length <= 1) return
-    if (!confirm(`¿Eliminar "${rutina.nombre}"? No borra los registros ya guardados.`)) return
+    const ok = await confirmar({
+      titulo: `¿Eliminar "${rutina.nombre}"?`,
+      cuerpo: 'No borra los registros ya guardados.',
+      accion: 'Eliminar',
+      peligro: true
+    })
+    if (!ok) return
     const resto = rutinas.filter((r) => r.id !== rutina.id)
     persistir({ ...datos, rutinas: resto })
     setRutSel(resto[0].id)
@@ -135,14 +142,19 @@ export default function RutinasEditor({ onSalir }) {
       setRutSel(limpio.rutinas[0].id)
       setImportText('')
       setPanel(null)
-      alert('Rutinas importadas y guardadas.')
+      avisar({ titulo: 'Rutinas importadas', mensaje: 'Los cambios quedaron guardados.', tono: 'ok' })
     } catch (e) {
-      alert('JSON inválido: ' + e.message)
+      avisar({ titulo: 'No se pudo importar', mensaje: 'El texto no es un JSON válido: ' + e.message })
     }
   }
 
-  const resetear = () => {
-    if (!confirm('¿Restaurar las rutinas originales? Perderás tus cambios (no tus registros).')) return
+  const resetear = async () => {
+    const ok = await confirmar({
+      titulo: '¿Restaurar las rutinas originales?',
+      cuerpo: 'Perderás tus cambios (no tus registros).',
+      accion: 'Restaurar'
+    })
+    if (!ok) return
     const def = resetRutinas()
     setDatos(def)
     setRutSel(def.rutinas[0].id)

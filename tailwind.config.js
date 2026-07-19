@@ -37,7 +37,8 @@ export default {
         'contraste-fuerte': token('contraste-fuerte'), // tinta blanca sobre rellenos -fuerte
         cardio: token('cardio'), // azure legible
         'cardio-fuerte': token('cardio-fuerte'), // azure saturado: rellenos
-        peligro: token('peligro'), // solo acciones destructivas
+        peligro: token('peligro'), // solo acciones destructivas (texto/ícono)
+        'peligro-fuerte': token('peligro-fuerte'), // relleno destructivo (tinta blanca)
 
         // ---- Tintes de categoría de comida (nutrición) ----
         'tinte-agua': token('tinte-agua'),

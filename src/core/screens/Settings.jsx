@@ -99,9 +99,9 @@ export default function Settings({
             acción más cara de la app —la única vuelta es otro correo—, y eso hay
             que saberlo para decidir, no después de haber decidido.
             No es un modal ni va en rojo a propósito: no se pierde nada, así que
-            no es un peligro, es información. `confirm()` en esta app está
-            reservado para lo irreversible ("¿Borrar esta sesión? No se puede
-            deshacer"); gastarlo acá abarataría esas advertencias. Y salir es una
+            no es un peligro, es información. La hoja de confirmación en esta app
+            está reservada para lo irreversible ("¿Borrar esta sesión? No se
+            puede deshacer"); gastarla acá abarataría esas advertencias. Y salir es una
             necesidad real cuando dos personas comparten el navegador. */}
         <p className="px-1 text-xs font-medium leading-relaxed text-texto-soft">
           No se borra nada: los datos siguen en este dispositivo. Para volver a entrar se necesita

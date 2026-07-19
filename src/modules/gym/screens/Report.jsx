@@ -15,6 +15,7 @@ import { reporteMarkdown, moduloActivo } from '../../../core/lib/modulos.js'
 import { fmtLargo, fmtCorto, hoyISO, fromISO, toISO, nombreDiaSemana } from '../../../core/lib/dates.js'
 import { getSettings, saveSettings } from '../../../core/lib/storage.js'
 import { IconChevronLeft, IconChevronRight, IconTrophy, IconRun, IconNote, IconDownload, IconWater, IconPill, IconMeal, IconCheck, IconSparkle } from '../../../core/components/icons.jsx'
+import { avisar } from '../../../core/components/Hoja.jsx'
 
 // Nota semanal para el coach (persistida por semana en settings)
 function getNotaSemana(inicio) {
@@ -94,7 +95,7 @@ export default function Report({ onSalir }) {
       link.href = canvas.toDataURL('image/png')
       link.click()
     } catch (e) {
-      alert('No se pudo exportar la imagen: ' + e.message)
+      avisar({ titulo: 'No se pudo exportar', mensaje: 'La imagen no se generó: ' + e.message })
     } finally {
       setExportando(false)
     }

@@ -23,6 +23,7 @@ import {
 } from '../data/plan.js'
 import { getPlan, savePlan, resetPlan } from '../lib/storage.js'
 import { IconChevronLeft, IconPlus, IconTrash, IconUpload } from '../../../core/components/icons.jsx'
+import { confirmar, avisar } from '../../../core/components/Hoja.jsx'
 
 const TIPOS = Object.keys(TIPOS_DIA)
 const CATS = Object.keys(CATEGORIAS)
@@ -56,9 +57,15 @@ export default function PlanEditor({ onSalir }) {
     persistir({ ...p, dias: { ...p.dias, [libre]: diaVacio(libre[0].toUpperCase() + libre.slice(1)) } })
     setDiaSel(libre)
   }
-  const eliminarDia = () => {
+  const eliminarDia = async () => {
     if (dias.length <= 1) return
-    if (!confirm(`¿Eliminar "${dia.nombre}"? No borra los registros ya guardados.`)) return
+    const ok = await confirmar({
+      titulo: `¿Eliminar "${dia.nombre}"?`,
+      cuerpo: 'No borra los registros ya guardados.',
+      accion: 'Eliminar',
+      peligro: true
+    })
+    if (!ok) return
     const nuevos = { ...p.dias }
     delete nuevos[diaSel]
     persistir({ ...p, dias: nuevos })
@@ -110,14 +117,19 @@ export default function PlanEditor({ onSalir }) {
       setDiaSel(DIAS_SEMANA.find((k) => limpio.dias[k]))
       setImportText('')
       setPanel(null)
-      alert('Plan importado y guardado.')
+      avisar({ titulo: 'Plan importado', mensaje: 'Los cambios quedaron guardados.', tono: 'ok' })
     } catch (e) {
-      alert('JSON inválido: ' + e.message)
+      avisar({ titulo: 'No se pudo importar', mensaje: 'El texto no es un JSON válido: ' + e.message })
     }
   }
 
-  const resetear = () => {
-    if (!confirm('¿Restaurar el plan original? Perderás tus cambios al plan (no tus registros).')) return
+  const resetear = async () => {
+    const ok = await confirmar({
+      titulo: '¿Restaurar el plan original?',
+      cuerpo: 'Perderás tus cambios al plan (no tus registros).',
+      accion: 'Restaurar'
+    })
+    if (!ok) return
     const def = resetPlan()
     setP(def)
     setDiaSel(DIAS_SEMANA.find((k) => def.dias[k]))
