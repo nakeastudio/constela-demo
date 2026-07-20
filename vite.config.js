@@ -13,7 +13,9 @@ export default defineConfig({
       manifest: {
         name: 'Constela',
         short_name: 'Constela',
-        description: 'Tracker personal de hábitos: gimnasio, nutrición y más',
+        description: 'Tracker personal de hábitos: entrenamiento, nutrición y skincare',
+        // Sin esto el plugin declara `en` por defecto y la app está en español.
+        lang: 'es',
         theme_color: '#0F0F12',
         background_color: '#0F0F12',
         display: 'standalone',
