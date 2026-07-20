@@ -28,6 +28,7 @@ import { moduloActivo } from './core/lib/modulos.js'
 import { supabase, cerrarSesion } from './core/lib/supabase.js'
 import { detenerSync } from './core/lib/sync.js'
 import { useTheme } from './core/hooks/useTheme.js'
+import { useVista } from './core/hooks/useVista.js'
 import { getRutina } from './modules/gym/lib/storage.js'
 import { resumenHoy as resumenGym } from './modules/gym/lib/session.js'
 import { resumenHoy as resumenNutricion } from './modules/nutricion/lib/storage.js'
@@ -71,7 +72,10 @@ export default function App({ sesion }) {
   // deriva del mail ni de nada del cliente: eso sería creerle al navegador.
   // Ojo: esto decide qué se MUESTRA. Lo que protege `invitaciones` es RLS.
   const [rol, setRol] = useState(null)
-  const [vista, setVista] = useState('hoy')
+  // La vista vive en el historial del navegador, no solo en estado: instalada en
+  // Android, el atrás del sistema tiene que volver una pantalla y no cerrar la
+  // app. `hoy` es la raíz: atrás desde ahí sí sale, que es lo correcto.
+  const [vista, irA] = useVista('hoy')
   const [diaKey, setDiaKey] = useState(null)
   const [toast, setToast] = useState({ mensaje: '', tipo: 'ok' })
   // Cambia al volver a Hoy: fuerza recalcular los resúmenes de las tarjetas.
@@ -117,15 +121,19 @@ export default function App({ sesion }) {
     await cerrarSesion()
   }
 
-  const irA = (v) => {
-    if (v === 'hoy') setSello((n) => n + 1)
+  // Volver a un horizonte —Hoy o Historial— recalcula los resúmenes y suelta la
+  // fecha con la que se abrió un módulo. Va en un efecto sobre `vista` y no
+  // dentro de `irA` porque ahora también se llega acá por el atrás del sistema,
+  // que no pasa por ningún handler nuestro.
+  useEffect(() => {
+    if (vista !== 'hoy' && vista !== 'history') return
+    setSello((n) => n + 1)
     setFechaFoco(null)
-    setVista(v)
-  }
+  }, [vista])
 
   const seleccionarDia = (key) => {
     setDiaKey(key)
-    setVista('session')
+    irA('session')
   }
 
   // Historial → la pantalla del módulo, en esa fecha. No hay editor del pasado
@@ -133,9 +141,9 @@ export default function App({ sesion }) {
   // acá porque App es la raíz de composición (igual que `tarjetas`/`editores`).
   const abrirModuloEnFecha = (id, fecha) => {
     setFechaFoco(fecha)
-    if (id === 'gym') setVista('gymHistory')
-    else if (id === 'nutricion') setVista('nutricion')
-    else if (id === 'skincare') setVista('skincare')
+    if (id === 'gym') irA('gymHistory')
+    else if (id === 'nutricion') irA('nutricion')
+    else if (id === 'skincare') irA('skincare')
   }
 
   const finalizada = (nuevosPRs) => {
@@ -163,7 +171,7 @@ export default function App({ sesion }) {
         Icon: IconDumbbell,
         hecho: gym.hecho,
         total: gym.total,
-        onAbrir: () => setVista('gym')
+        onAbrir: () => irA('gym')
       },
       {
         id: 'nutricion',
@@ -172,7 +180,7 @@ export default function App({ sesion }) {
         Icon: IconSalad,
         hecho: nutri.hecho,
         total: nutri.total,
-        onAbrir: () => setVista('nutricion')
+        onAbrir: () => irA('nutricion')
       },
       {
         id: 'skincare',
@@ -181,7 +189,7 @@ export default function App({ sesion }) {
         Icon: IconSparkle,
         hecho: skin.hecho,
         total: skin.total,
-        onAbrir: () => setVista('skincare')
+        onAbrir: () => irA('skincare')
       }
     ].filter((t) => moduloActivo(t.id))
     // `rutina` y `sello` entran para recalcular al volver o al editar el plan.
@@ -196,21 +204,21 @@ export default function App({ sesion }) {
       titulo: 'Editar entrenamiento',
       detalle: 'Pesos, reps, descansos y ejercicios',
       Icon: IconDumbbell,
-      onAbrir: () => setVista('routine')
+      onAbrir: () => irA('routine')
     },
     {
       id: 'nutricion',
       titulo: 'Editar plan',
       detalle: 'Comidas, objetivos, suplementos y carbos',
       Icon: IconSalad,
-      onAbrir: () => setVista('plan')
+      onAbrir: () => irA('plan')
     },
     {
       id: 'skincare',
       titulo: 'Editar skincare',
       detalle: 'Rutinas, días, pasos y tiempos de espera',
       Icon: IconSparkle,
-      onAbrir: () => setVista('skincareEditor')
+      onAbrir: () => irA('skincareEditor')
     }
   ].filter((e) => moduloActivo(e.id))
 
@@ -222,7 +230,7 @@ export default function App({ sesion }) {
       <Hoja />
 
 
-      {vista === 'hoy' && <Hoy tarjetas={tarjetas} onIrAjustes={() => setVista('settings')} />}
+      {vista === 'hoy' && <Hoy tarjetas={tarjetas} onIrAjustes={() => irA('settings')} />}
       {vista === 'gym' && <Home rutina={rutina} onSelectDia={seleccionarDia} onSalir={() => irA('hoy')} />}
       {/* `key` fuerza remontar al cambiar de fecha: la fecha inicial se lee en
           el useState de Nutricion y si no, abrir otro día no la movería. */}
@@ -244,21 +252,21 @@ export default function App({ sesion }) {
           onSalir={() => (fechaFoco ? irA('history') : irA('hoy'))}
         />
       )}
-      {vista === 'skincareEditor' && <RutinasEditor onSalir={() => setVista('settings')} />}
+      {vista === 'skincareEditor' && <RutinasEditor onSalir={() => irA('settings')} />}
       {vista === 'session' && diaKey && (
-        <Session rutina={rutina} diaKey={diaKey} timer={timer} onSalir={() => setVista('gym')} onFinalizada={finalizada} />
+        <Session rutina={rutina} diaKey={diaKey} timer={timer} onSalir={() => irA('gym')} onFinalizada={finalizada} />
       )}
       {/* Historial cruzado: itera el registro y enruta a cada módulo. Ya no es
           "el historial del gym": el pasado es un horizonte, no un módulo. */}
       {vista === 'history' && (
-        <Historial onAbrirModulo={abrirModuloEnFecha} onIrAjustes={() => setVista('settings')} />
+        <Historial onAbrirModulo={abrirModuloEnFecha} onIrAjustes={() => irA('settings')} />
       )}
       {vista === 'gymHistory' && <History fecha={fechaFoco} onSalir={() => irA('history')} />}
       {vista === 'report' && <Report onSalir={() => irA('hoy')} />}
-      {vista === 'routine' && <Routine rutina={rutina} onChange={setRutina} onSalir={() => setVista('settings')} />}
-      {vista === 'perfil' && <Perfil email={sesion?.user?.email} onSalir={() => setVista('settings')} />}
-      {vista === 'acceso' && <Acceso onSalir={() => setVista('settings')} />}
-      {vista === 'plan' && <PlanEditor onSalir={() => setVista('settings')} />}
+      {vista === 'routine' && <Routine rutina={rutina} onChange={setRutina} onSalir={() => irA('settings')} />}
+      {vista === 'perfil' && <Perfil email={sesion?.user?.email} onSalir={() => irA('settings')} />}
+      {vista === 'acceso' && <Acceso onSalir={() => irA('settings')} />}
+      {vista === 'plan' && <PlanEditor onSalir={() => irA('settings')} />}
       {vista === 'settings' && (
         <Settings
           dark={dark}
@@ -266,8 +274,8 @@ export default function App({ sesion }) {
           editores={editores}
           email={sesion?.user?.email}
           esAdmin={rol === 'admin'}
-          onEditarPerfil={() => setVista('perfil')}
-          onAcceso={() => setVista('acceso')}
+          onEditarPerfil={() => irA('perfil')}
+          onAcceso={() => irA('acceso')}
           onCerrarSesion={salir}
           onSalir={() => irA('hoy')}
           onModulosChange={() => setSello((n) => n + 1)}

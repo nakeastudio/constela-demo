@@ -17,6 +17,7 @@
 import React, { useEffect, useReducer, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { IconCheck, IconInfo } from './icons.jsx'
+import { bloquearAtras, liberarAtras } from '../hooks/useVista.js'
 
 // ── Store singleton ─────────────────────────────────────────────────────────
 // Una cola: se muestra de a una hoja. Encolar devuelve la promesa que el sitio
@@ -27,12 +28,20 @@ let secuencia = 0
 
 const avisarCambio = () => oyentes.forEach((o) => o())
 
+// Descarte de la hoja que está pintada ahora. Lo publica el host en cada
+// render; lo llama el atrás del sistema a través de la capa.
+let descartarPintada = null
+
 function encolar(peticion) {
   return new Promise((resolver) => {
     // Quién disparó la hoja: se le devuelve el foco al cerrar (no regresar el
     // foco sería peor que `confirm()`, que al menos no lo pierde).
     const disparador = typeof document !== 'undefined' ? document.activeElement : null
-    cola = [...cola, { ...peticion, id: ++secuencia, resolver, disparador }]
+    // El atrás del sistema tiene que cerrar la hoja, no navegar por debajo de
+    // ella. Se registra acá —fuera de React— porque es el momento exacto en que
+    // la hoja pasa a existir, y así el historial no depende del ciclo de vida.
+    const capa = bloquearAtras(() => descartarPintada?.())
+    cola = [...cola, { ...peticion, id: ++secuencia, resolver, disparador, capa }]
     avisarCambio()
   })
 }
@@ -97,6 +106,9 @@ export default function Hoja() {
 
   const cerrar = (resultado) => {
     if (!pintado) return
+    // Consume el centinela del atrás. Si el cierre VINO del atrás, la capa ya
+    // está muerta y esto no hace nada.
+    liberarAtras(pintado.capa)
     pintado.resolver(resultado)
     cola = cola.filter((r) => r.id !== pintado.id)
     setAbierto(false)
@@ -107,6 +119,11 @@ export default function Hoja() {
     if (sinMovimiento()) desmontar()
     else setTimeout(desmontar, MS_SALIDA)
   }
+
+  // El atrás del sistema es un descarte ambiguo más, igual que el scrim o Esc:
+  // en confirm cancela (false), en aviso solo cierra. Se publica en cada render
+  // para que el cierre siempre apunte a la hoja que está pintada.
+  descartarPintada = pintado ? () => cerrar(pintado.tipo === 'confirm' ? false : undefined) : null
 
   if (!pintado) return null
   return <Pieza req={pintado} abierto={abierto} onCerrar={cerrar} />
