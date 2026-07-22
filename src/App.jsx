@@ -14,6 +14,7 @@ import History from './modules/gym/screens/History.jsx'
 import Report from './modules/gym/screens/Report.jsx'
 import Routine from './modules/gym/screens/Routine.jsx'
 import RestTimer from './modules/gym/components/RestTimer.jsx'
+import SessionBar from './modules/gym/components/SessionBar.jsx'
 import { useRestTimer } from './modules/gym/hooks/useRestTimer.js'
 import Nutricion from './modules/nutricion/screens/Nutricion.jsx'
 import PlanEditor from './modules/nutricion/screens/PlanEditor.jsx'
@@ -30,7 +31,7 @@ import { detenerSync } from './core/lib/sync.js'
 import { useTheme } from './core/hooks/useTheme.js'
 import { useVista } from './core/hooks/useVista.js'
 import { getRutina } from './modules/gym/lib/storage.js'
-import { resumenHoy as resumenGym } from './modules/gym/lib/session.js'
+import { resumenHoy as resumenGym, sesionEnCurso } from './modules/gym/lib/session.js'
 import { resumenHoy as resumenNutricion } from './modules/nutricion/lib/storage.js'
 import { resumenHoy as resumenSkincare } from './modules/skincare/lib/storage.js'
 import { hoyISO } from './core/lib/dates.js'
@@ -222,8 +223,31 @@ export default function App({ sesion }) {
     }
   ].filter((e) => moduloActivo(e.id))
 
+  // ¿Se muestra la barra de navegación en esta vista? Los tableros de módulo y la
+  // sesión la esconden; el resto la tiene. Se reusa para posicionar la barra de
+  // sesión (encima de la nav cuando ésta se ve).
+  const navVisible = !SIN_BARRA.includes(vista)
+
+  // Barra de sesión persistente. Se recalcula al navegar, al volver a un
+  // horizonte (`sello`) o al editar la rutina. Solo si el gym está PRENDIDO: un
+  // borrador viejo con el módulo apagado no debe asomar ni entrar a leerse (así
+  // tampoco puede romper). App lee el estado del gym para armar la prop, igual
+  // que arma las tarjetas de Hoy: core no importa el módulo, la raíz sí.
+  const sesionAbierta = useMemo(
+    () => (gymActivo ? sesionEnCurso() : null),
+    [gymActivo, vista, sello, rutina]
+  )
+  // No en la propia sesión: no tiene sentido enlazar a la pantalla actual.
+  const mostrarBarra = !!sesionAbierta && vista !== 'session'
+
   return (
-    <div className="mx-auto min-h-full max-w-md bg-fondo text-texto">
+    <div
+      className="mx-auto min-h-full max-w-md bg-fondo text-texto"
+      // Con la barra a la vista, un colchón extra al pie para que el último
+      // contenido no quede tapado (las pantallas ya traen pb-24/pb-28 para la
+      // nav; la barra suma ~56px encima). Sin barra, nada cambia.
+      style={mostrarBarra ? { paddingBottom: '3.5rem' } : undefined}
+    >
       <Toast toast={toast} onClose={() => setToast({ mensaje: '', tipo: 'ok' })} />
       {/* Confirmaciones y avisos (bottom sheet) montados una sola vez: se
           disparan por API imperativa desde cualquier pantalla. */}
@@ -282,13 +306,46 @@ export default function App({ sesion }) {
         />
       )}
 
-      {!SIN_BARRA.includes(vista) && <BottomNav vista={vista} onIr={irA} />}
+      {navVisible && <BottomNav vista={vista} onIr={irA} />}
 
-      {/* Cronómetro compartido (descanso del gym / espera de skincare): a nivel
-          de app, así sobrevive a navegar entre pantallas. Con los dos módulos
-          que lo usan apagados no se muestra (y el efecto de arriba ya lo detuvo,
-          así que tampoco queda corriendo). */}
-      {timerActivo && <RestTimer timer={timer} />}
+      {/* Chrome inferior flotante. La barra de sesión y la hoja del cronómetro
+          comparten UN contenedor anclado abajo, apilados en columna: la barra
+          arriba, la hoja al piso. Así NUNCA se pisan, pase lo que pase con la
+          altura de la hoja —sin números mágicos ni medir en runtime—.
+          STACKING: barra de sesión (encima) · hoja de descanso (al piso, donde
+          siempre estuvo) · barra de navegación (debajo de la hoja).
+          El contenedor sube por encima de la nav cuando ésta se ve y no hay
+          descanso; con descanso baja al piso y la hoja tapa la nav (como
+          siempre), con la barra montada justo encima. La hoja del cronómetro es
+          compartida (descanso del gym / espera de skincare) y vive a nivel de
+          app para sobrevivir a navegar; con sus dos módulos apagados no se
+          muestra (y el efecto de arriba ya la detuvo). */}
+      {(mostrarBarra || (timerActivo && timer.activo)) && (
+        <div
+          className={`pointer-events-none fixed inset-x-0 z-40 mx-auto flex max-w-md flex-col ${
+            timer.activo || !navVisible
+              ? 'bottom-0'
+              : 'bottom-[calc(3.75rem+env(safe-area-inset-bottom))]'
+          }`}
+        >
+          {mostrarBarra && (
+            <div className="pointer-events-auto">
+              <SessionBar
+                diaNombre={sesionAbierta.diaNombre}
+                hecho={sesionAbierta.hecho}
+                total={sesionAbierta.total}
+                inicioMs={sesionAbierta.inicioMs}
+                descansando={timer.activo}
+                onAbrir={() => {
+                  setDiaKey(sesionAbierta.diaKey)
+                  irA('session')
+                }}
+              />
+            </div>
+          )}
+          {timerActivo && <RestTimer timer={timer} />}
+        </div>
+      )}
     </div>
   )
 }

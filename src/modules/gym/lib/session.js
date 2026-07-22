@@ -4,8 +4,9 @@
 // Construye la estructura de una sesión a partir de un día de la rutina,
 // auto-rellenando peso/reps de la última vez que se hizo cada ejercicio.
 
-import { getSessions, getRutina } from './storage.js'
+import { getSessions, getRutina, getActiveSessions } from './storage.js'
 import { rangoSemana, enRango, hoyISO } from '../../../core/lib/dates.js'
+import { ahoraISO } from '../../../core/lib/dia.js'
 
 // Id opaco y estable. NO se deriva de la fecha: la fecha es editable (se puede
 // mover una sesión de día) y un id derivado dejaría huérfana la fila vieja en
@@ -94,7 +95,12 @@ export function crearSesion(diaKey, dia, fecha) {
     cardio: dia.cardio ? { nombre: dia.cardio.nombre, done: false } : null,
     notas: '',
     finalizada: false,
-    completadaEn: null
+    completadaEn: null,
+    // Momento en que arrancó el entrenamiento. Es un TIMESTAMP guardado, no un
+    // contador en memoria: el tiempo transcurrido se DERIVA de `ahora - inicioEn`,
+    // así sobrevive a navegar, recargar y al segundo plano —vuelve con el valor
+    // real, no congelado donde se detuvo el JS— (misma lección que el descanso).
+    inicioEn: ahoraISO()
   }
 }
 
@@ -201,4 +207,76 @@ export function resumenHoy() {
   })
   const total = Object.keys(getRutina()).length
   return { hecho: dias.size, total, detalle: `${dias.size}/${total} días esta semana` }
+}
+
+// --- Duración de la sesión (reloj de pared, de arranque a cierre) ---
+// Momento de arranque en ms. La fuente de verdad es el timestamp `inicioEn` del
+// borrador. Un borrador viejo —de antes de que existiera este campo— no lo trae:
+// se estima con la primera serie marcada (`registradoEn`), y si no hay ninguna,
+// con "ahora". Es aproximado SOLO para ese borrador heredado, nunca un número
+// disparatado ni negativo.
+export function inicioSesionMs(sesion) {
+  if (!sesion) return null
+  if (sesion.inicioEn) {
+    const t = Date.parse(sesion.inicioEn)
+    if (!Number.isNaN(t)) return t
+  }
+  let min = Infinity
+  for (const ej of sesion.ejercicios || []) {
+    for (const s of ej.sets || []) {
+      if (!s.registradoEn) continue
+      const t = Date.parse(s.registradoEn)
+      if (!Number.isNaN(t) && t < min) min = t
+    }
+  }
+  return min === Infinity ? Date.now() : min
+}
+
+// Segundos transcurridos desde el arranque hasta `hasta` (ms). Nunca negativo:
+// el reloj de pared solo avanza. No hay pausa —una sesión corre de principio a
+// fin, se la mire o no; una pausa invita al "me olvidé de reanudar y el tiempo
+// quedó mal"—. Si algún día hace falta, es otro campo, no un rediseño.
+export function duracionSesionSeg(sesion, hasta = Date.now()) {
+  const ini = inicioSesionMs(sesion)
+  if (ini == null) return 0
+  return Math.max(0, Math.round((hasta - ini) / 1000))
+}
+
+// Formatea segundos como reloj legible: `m:ss` hasta la hora, `h:mm:ss` a partir
+// de una hora. Nunca "92:00" ni "5472 seg".
+export function fmtDuracion(seg) {
+  const s = Math.max(0, Math.floor(seg))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const ss = s % 60
+  const pad = (n) => String(n).padStart(2, '0')
+  return h > 0 ? `${h}:${pad(m)}:${pad(ss)}` : `${m}:${pad(ss)}`
+}
+
+// --- Sesión EN CURSO (para la barra persistente de App) ---
+// Un borrador de HOY es un entrenamiento abierto: se crea al montar Session y
+// solo se limpia al finalizar. Devuelve con qué día retomarlo, el avance GENERAL
+// —series hechas sobre totales, el MISMO número que Session muestra en su
+// encabezado (hechos/totalSets), sin métrica nueva— y el arranque en ms para el
+// reloj.
+//
+// Lee el borrador CRUDO, sin reconciliar contra el plan (eso lo hace Session al
+// abrir). En el caso normal —no editar la rutina con la barra a la vista— los
+// números coinciden; si editó el plan justo entonces, se alinean al retomar. Es
+// un desfase efímero, no un dato falso.
+//
+// Solo cuenta un borrador cuyo día SIGUE en la rutina: si el día se borró del
+// plan, retomarlo rompería Session (no existe `rutina[diaKey]`), así que no se
+// ofrece.
+export function sesionEnCurso() {
+  const rutina = getRutina()
+  const borradores = getActiveSessions()
+  const hoy = hoyISO()
+  const draft = Object.values(borradores).find(
+    (s) => s && s.fecha === hoy && !s.finalizada && rutina[s.diaKey]
+  )
+  if (!draft) return null
+  const total = draft.ejercicios.reduce((a, e) => a + e.sets.length, 0)
+  const hecho = draft.ejercicios.reduce((a, e) => a + e.sets.filter((x) => x.done).length, 0)
+  return { diaKey: draft.diaKey, diaNombre: draft.diaNombre, hecho, total, inicioMs: inicioSesionMs(draft) }
 }

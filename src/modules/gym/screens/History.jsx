@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import LineChart from '../components/LineChart.jsx'
 import Calendar from '../components/Calendar.jsx'
 import { getSessions, getPRs, deleteSession } from '../lib/storage.js'
+import { fmtDuracion } from '../lib/session.js'
 import { fmtLargo, fmtCorto, nombreDiaSemana } from '../../../core/lib/dates.js'
 import { IconChevronLeft, IconChevronDown, IconTrend, IconTrash, IconRun } from '../../../core/components/icons.jsx'
 import Record from '../../../core/components/Record.jsx'
@@ -117,8 +118,11 @@ export default function History({ fecha, onSalir }) {
               <summary className="flex cursor-pointer items-center justify-between gap-2 p-4">
                 <div className="min-w-0">
                   <p className="truncate font-bold tracking-tight text-texto">{s.diaNombre.replace(/^Día \d+ — /, '')}</p>
+                  {/* Duración solo si la sesión la guardó (las de antes de este
+                      campo no la tienen: se omite, nunca un número inventado). */}
                   <p className="truncate text-xs font-medium text-texto-soft">
                     {nombreDiaSemana(s.fecha)} {fmtLargo(s.fecha)} · {hechos} series
+                    {s.duracionSeg != null && ` · ${fmtDuracion(s.duracionSeg)}`}
                   </p>
                 </div>
                 <IconChevronDown className="h-5 w-5 shrink-0 text-texto-soft transition-transform group-open:rotate-180" />

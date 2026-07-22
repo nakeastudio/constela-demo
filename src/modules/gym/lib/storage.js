@@ -62,6 +62,13 @@ export function getActiveSession(diaKey) {
   return leerBorradores()[diaKey] || null
 }
 
+// Todos los borradores en curso (mapa diaKey→sesión). Lo usa App para armar la
+// barra de sesión persistente sin conocer la forma interna del almacenamiento
+// (mismo idioma que getActiveSession, pero sin fijar un día).
+export function getActiveSessions() {
+  return leerBorradores()
+}
+
 export function saveActiveSession(session) {
   const borradores = leerBorradores()
   borradores[session.diaKey] = session

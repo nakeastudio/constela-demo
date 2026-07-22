@@ -12,6 +12,12 @@ function beep() {
     const Ctx = window.AudioContext || window.webkitAudioContext
     if (!Ctx) return
     const ctx = new Ctx()
+    // Casi a fondo de escala (1.0 = máximo; por encima satura). Fuerte para que
+    // se oiga desde el otro lado de un gimnasio, sin distorsionar. Ojo: esto NO
+    // hace que suene en segundo plano de forma fiable —solo más fuerte cuando la
+    // ventana de gracia de Android alcanza a dispararlo—; la notificación real es
+    // territorio de Capacitor, diferido.
+    const PICO = 0.9
     const tono = (freq, start, dur) => {
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
@@ -20,16 +26,20 @@ function beep() {
       osc.type = 'sine'
       osc.frequency.value = freq
       gain.gain.setValueAtTime(0.001, ctx.currentTime + start)
-      gain.gain.exponentialRampToValueAtTime(0.4, ctx.currentTime + start + 0.02)
+      gain.gain.exponentialRampToValueAtTime(PICO, ctx.currentTime + start + 0.02)
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur)
       osc.start(ctx.currentTime + start)
       osc.stop(ctx.currentTime + start + dur)
     }
-    // Triple beep ascendente
+    // Dos ráfagas ascendentes: la repetición la vuelve inconfundible sin caer en
+    // sirena (una alarma de 5 segundos molesta más de lo que ayuda).
     tono(660, 0, 0.18)
     tono(880, 0.22, 0.18)
     tono(1046, 0.44, 0.3)
-    setTimeout(() => ctx.close(), 1200)
+    tono(880, 0.9, 0.18)
+    tono(1046, 1.12, 0.18)
+    tono(1318, 1.34, 0.34)
+    setTimeout(() => ctx.close(), 2000)
   } catch {
     /* sin audio disponible */
   }

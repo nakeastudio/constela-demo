@@ -22,7 +22,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import ExerciseCard from '../components/ExerciseCard.jsx'
 import CardioCard from '../components/CardioCard.jsx'
-import { crearSesion, reconciliarSesion, ultimaSesionSets, ejercicioCompleto } from '../lib/session.js'
+import { crearSesion, reconciliarSesion, ultimaSesionSets, ejercicioCompleto, duracionSesionSeg, fmtDuracion } from '../lib/session.js'
 import {
   getActiveSession,
   saveActiveSession,
@@ -39,7 +39,8 @@ import {
   IconFlame,
   IconRun,
   IconNote,
-  IconCheck
+  IconCheck,
+  IconClock
 } from '../../../core/components/icons.jsx'
 
 // --- Tira de pasos: dónde estoy y cuánto falta ---
@@ -150,6 +151,18 @@ export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada }
     saveActiveSession(sesion)
   }, [sesion])
 
+  // --- Reloj de la sesión ---
+  // Segundero: solo empuja un re-render por segundo. El tiempo real se deriva de
+  // `duracionSesionSeg(sesion, ahora)` (timestamp `inicioEn`), así que ella lo ve
+  // correr mientras entrena —"así controlo mis tiempos"— y sigue bien tras salir
+  // y volver a la pantalla.
+  const [ahora, setAhora] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setAhora(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const transcurrido = duracionSesionSeg(sesion, ahora)
+
   // --- Los pasos del día, en orden ---
   const pasos = useMemo(() => {
     const l = []
@@ -249,7 +262,18 @@ export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada }
   // `paso` es estado de la pantalla, no del entrenamiento: no entra al historial.
   const finalizar = () => {
     const { paso: _enPantalla, ...limpia } = sesion
-    const finalizada = { ...limpia, finalizada: true, completadaEn: ahoraISO() }
+    // El reloj de pared se cierra acá: `finEn` es el cuándo, `duracionSeg` el
+    // total que el historial guarda para revisar los tiempos. Las sesiones
+    // viejas no traen ninguno de los dos: History muestra "—", nunca un número
+    // inventado (ver duracionSesionSeg para el borrador heredado sin inicioEn).
+    const fin = ahoraISO()
+    const finalizada = {
+      ...limpia,
+      finalizada: true,
+      completadaEn: fin,
+      finEn: fin,
+      duracionSeg: duracionSesionSeg(sesion, Date.parse(fin))
+    }
     saveSession(finalizada)
     const { nuevos } = actualizarPRs(finalizada)
     clearActiveSession(diaKey)
@@ -289,7 +313,14 @@ export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada }
             <IconChevronLeft className="h-6 w-6" />
           </button>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-sm font-bold leading-tight tracking-tight text-texto">{dia.nombre}</h1>
+            <div className="flex items-baseline justify-between gap-2">
+              <h1 className="truncate text-sm font-bold leading-tight tracking-tight text-texto">{dia.nombre}</h1>
+              {/* Reloj de pared de la sesión, junto al avance. Neutro (no compite
+                  con el turquesa del progreso): es dato, no logro ni alarma. */}
+              <span className="flex shrink-0 items-center gap-1 text-xs font-semibold tabular-nums text-texto-soft">
+                <IconClock className="h-3.5 w-3.5" /> {fmtDuracion(transcurrido)}
+              </span>
+            </div>
             <div className="mt-1.5 flex items-center gap-2">
               {/* Progreso = turquesa. El avance de la sesión es completado, no
                   marca. */}
