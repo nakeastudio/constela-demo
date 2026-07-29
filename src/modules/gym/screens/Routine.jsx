@@ -68,6 +68,18 @@ export default function Routine({ rutina, onChange, onSalir }) {
     const lista = dia[seccion].filter((_, i) => i !== idx)
     persistir({ ...r, [diaSel]: { ...dia, [seccion]: lista } })
   }
+  // Reordenar sin borrar y volver a agregar: mueve el ejercicio una posición.
+  // El orden importa (calentamiento pesado primero, aislamiento al final), así
+  // que se edita en su lugar. Se ignora fuera de rango: el componente igual
+  // desactiva la flecha en los extremos.
+  const moverEj = (seccion, idx, delta) => {
+    const destino = idx + delta
+    const lista = dia[seccion]
+    if (destino < 0 || destino >= lista.length) return
+    const copia = [...lista]
+    ;[copia[idx], copia[destino]] = [copia[destino], copia[idx]]
+    persistir({ ...r, [diaSel]: { ...dia, [seccion]: copia } })
+  }
   // El nombre y el grupo llegan del selector — del catálogo o del alta a mano —
   // y nunca se tipean sueltos acá. Los récords se guardan por nombre, así que un
   // "Nuevo ejercicio" tipeado a mano cada vez partía el historial; y el grupo
@@ -242,6 +254,7 @@ export default function Routine({ rutina, onChange, onSalir }) {
         lista={dia.ejercicios}
         onEdit={editarEj}
         onBorrar={borrarEj}
+        onMover={moverEj}
         onAgregar={() => setSelector('ejercicios')}
         inputBase={inputBase}
       />
@@ -253,6 +266,7 @@ export default function Routine({ rutina, onChange, onSalir }) {
         lista={dia.core || []}
         onEdit={editarEj}
         onBorrar={borrarEj}
+        onMover={moverEj}
         onAgregar={() => setSelector('core')}
         inputBase={inputBase}
         conTiempo
@@ -378,13 +392,36 @@ export default function Routine({ rutina, onChange, onSalir }) {
 }
 
 // --- Sección reutilizable de lista de ejercicios (fuerza o core) ---
-function SeccionEjercicios({ titulo, seccion, lista, onEdit, onBorrar, onAgregar, inputBase, conTiempo }) {
+function SeccionEjercicios({ titulo, seccion, lista, onEdit, onBorrar, onMover, onAgregar, inputBase, conTiempo }) {
   return (
     <div className="space-y-3 rounded-2xl border border-borde/25 bg-superficie p-4 shadow-suave">
       <h2 className="text-xs font-bold uppercase tracking-wide text-texto-soft">{titulo}</h2>
       {lista.length === 0 && <p className="text-sm text-texto-soft">Sin ejercicios.</p>}
       {lista.map((ej, idx) => (
         <div key={idx} className="space-y-2 rounded-xl bg-fondo p-3">
+          {/* Encabezado: posición + reordenar. El orden importa (compuesto pesado
+              primero, aislamiento al final), así se mueve sin borrar y re-agregar. */}
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-texto-soft">Ejercicio {idx + 1}</span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onMover(seccion, idx, -1)}
+                disabled={idx === 0}
+                aria-label="Subir ejercicio"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-texto-soft active:bg-superficie-alta disabled:opacity-30"
+              >
+                <IconChevronUp className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => onMover(seccion, idx, 1)}
+                disabled={idx === lista.length - 1}
+                aria-label="Bajar ejercicio"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-texto-soft active:bg-superficie-alta disabled:opacity-30"
+              >
+                <IconChevronDown className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
           <input value={ej.nombre} onChange={(e) => onEdit(seccion, idx, 'nombre', e.target.value)} className={`w-full font-semibold text-texto ${inputBase}`} />
           <div className="grid grid-cols-2 gap-2">
             <label className="text-[11px] font-medium text-texto-soft">
