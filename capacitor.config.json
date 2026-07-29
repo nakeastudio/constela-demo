@@ -1,0 +1,11 @@
+{
+  "appId": "app.constela.habitos",
+  "appName": "Constela",
+  "webDir": "dist",
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_constela",
+      "iconColor": "#D1345B"
+    }
+  }
+}

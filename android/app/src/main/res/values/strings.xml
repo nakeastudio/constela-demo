@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Constela</string>
+    <string name="title_activity_main">Constela</string>
+    <string name="package_name">app.constela.habitos</string>
+    <string name="custom_url_scheme">app.constela.habitos</string>
+</resources>

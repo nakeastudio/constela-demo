@@ -5,6 +5,16 @@
 // Al llegar a 0: vibra el celular y suena un beep.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { programarFinCronometro, cancelarFinCronometro } from '../../../core/lib/notificaciones.js'
+
+// Título y cuerpo del aviso nativo según el tipo de cronómetro. Genérico y en
+// core: el hook no conoce ejercicios ni pasos, solo la etiqueta que le pasaron.
+function textoAviso(tipo, etiqueta) {
+  if (tipo === 'espera') {
+    return { titulo: 'Espera lista', cuerpo: etiqueta || 'Continúa tu rutina de skincare' }
+  }
+  return { titulo: '¡Descanso terminado!', cuerpo: etiqueta ? `Sigue: ${etiqueta}` : 'Vuelve a tu entrenamiento' }
+}
 
 // Beep con Web Audio API (no requiere archivos de audio)
 function beep() {
@@ -99,6 +109,17 @@ export function useRestTimer() {
   const [etiqueta, setEtiqueta] = useState('')
   const finRef = useRef(0) // timestamp de fin (ms)
   const intervalRef = useRef(null)
+  // Tipo del cronómetro en curso ('descanso' | 'espera') y su etiqueta, para
+  // (re)programar y cancelar el aviso nativo. En el navegador el helper es no-op.
+  const tipoRef = useRef('descanso')
+  const etiquetaRef = useRef('')
+
+  // (Re)programa el aviso nativo para dentro de `seg` segundos. Se llama al
+  // iniciar, al reanudar y al sumar tiempo. En navegador no hace nada.
+  const reprogramarAviso = useCallback((seg) => {
+    const { titulo, cuerpo } = textoAviso(tipoRef.current, etiquetaRef.current)
+    programarFinCronometro(tipoRef.current, seg, titulo, cuerpo)
+  }, [])
 
   // Solo mientras corre de verdad: en pausa no tiene sentido gastar batería.
   useWakeLock(activo && !pausado)
@@ -112,6 +133,7 @@ export function useRestTimer() {
 
   const detener = useCallback(() => {
     limpiar()
+    cancelarFinCronometro(tipoRef.current) // saltó/paró antes: no dejar el aviso colgado
     setActivo(false)
     setPausado(false)
     setRestante(0)
@@ -119,6 +141,9 @@ export function useRestTimer() {
 
   const dispararFin = useCallback(() => {
     limpiar()
+    // El fin ocurrió con la app en primer plano: ya suena el beep, así que el
+    // aviso nativo programado sería redundante. Se cancela.
+    cancelarFinCronometro(tipoRef.current)
     vibrar()
     beep()
     setRestante(0)
@@ -135,22 +160,26 @@ export function useRestTimer() {
   }, [dispararFin])
 
   const iniciar = useCallback(
-    (segundos, nombre = '') => {
+    (segundos, nombre = '', tipo = 'descanso') => {
       limpiar()
       const dur = Math.max(1, Math.round(segundos))
       finRef.current = Date.now() + dur * 1000
+      tipoRef.current = tipo
+      etiquetaRef.current = nombre
       setTotal(dur)
       setRestante(dur)
       setEtiqueta(nombre)
       setActivo(true)
       setPausado(false)
       intervalRef.current = setInterval(tick, 250)
+      reprogramarAviso(dur) // aviso nativo para el instante de fin (solo en APK)
     },
-    [limpiar, tick]
+    [limpiar, tick, reprogramarAviso]
   )
 
   const pausar = useCallback(() => {
     limpiar()
+    cancelarFinCronometro(tipoRef.current) // en pausa no hay fin previsto
     setPausado(true)
   }, [limpiar])
 
@@ -158,15 +187,20 @@ export function useRestTimer() {
     finRef.current = Date.now() + restante * 1000
     setPausado(false)
     intervalRef.current = setInterval(tick, 250)
-  }, [restante, tick])
+    reprogramarAviso(restante) // reprograma el aviso al nuevo fin
+  }, [restante, tick, reprogramarAviso])
 
   const sumar = useCallback(
     (segundos) => {
       finRef.current += segundos * 1000
       setTotal((t) => t + segundos)
-      setRestante((r) => r + segundos)
+      setRestante((r) => {
+        const nuevo = r + segundos
+        reprogramarAviso(nuevo) // corrió el fin: reprograma el aviso
+        return nuevo
+      })
     },
-    []
+    [reprogramarAviso]
   )
 
   useEffect(() => () => limpiar(), [limpiar])

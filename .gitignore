@@ -32,3 +32,15 @@ constela-backup-*.json
 # Worktrees de agentes: checkouts anidados completos. Sin esta línea, un
 # `git add -A` se lleva un repositorio entero dentro de un commit.
 .claude/worktrees/
+
+# --- Capacitor / Android ---
+# El proyecto android/ se regenera con `npx cap add android`. Se versiona la
+# config y el código propio, no los artefactos de build ni las dependencias.
+android/.gradle/
+android/app/build/
+android/build/
+android/captures/
+android/.idea/
+android/local.properties
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json

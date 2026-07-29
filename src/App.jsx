@@ -25,6 +25,7 @@ import Perfil from './core/screens/Perfil.jsx'
 import Acceso from './core/screens/Acceso.jsx'
 import BottomNav from './core/layout/BottomNav.jsx'
 import Hoja from './core/components/Hoja.jsx'
+import { pedirPermisoNotificaciones } from './core/lib/notificaciones.js'
 import { moduloActivo } from './core/lib/modulos.js'
 import { supabase, cerrarSesion } from './core/lib/supabase.js'
 import { detenerSync } from './core/lib/sync.js'
@@ -96,6 +97,12 @@ export default function App({ sesion }) {
   const gymActivo = moduloActivo('gym')
   const skincareActivo = moduloActivo('skincare')
   const timerActivo = gymActivo || skincareActivo
+
+  // Dentro del APK: pedir permiso de notificaciones una vez al abrir (Android 13+
+  // lo exige). En el navegador es no-op. Sin esto, el aviso nativo nunca dispara.
+  useEffect(() => {
+    pedirPermisoNotificaciones()
+  }, [])
 
   // Si apaga los dos módulos que lo usan con un cronómetro corriendo, el panel no
   // puede quedar colgado ni el wake lock tomado por módulos que ya no se muestran.

@@ -297,7 +297,7 @@ export default function Skincare({ fechaInicial, timer, onSalir }) {
   // Arranca el cronómetro compartido con el nombre del paso, para que se lea
   // desde cualquier pantalla ("Tratamiento — espera").
   const esperar = (paso) => {
-    if (timer && paso.espera > 0) timer.iniciar(paso.espera, `${paso.nombre} — espera`)
+    if (timer && paso.espera > 0) timer.iniciar(paso.espera, `${paso.nombre} — espera`, 'espera')
   }
 
   const total = rutinas.reduce((a, r) => a + r.pasos.length, 0)
