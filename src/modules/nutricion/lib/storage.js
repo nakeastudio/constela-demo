@@ -8,7 +8,7 @@
 // Un día de nutrición sigue la convención de core/lib/dia.js: cada ítem
 // marcable es { done, registradoEn }.
 
-import { leer, escribir } from '../../../core/lib/storage.js'
+import { leer, escribir, borrar } from '../../../core/lib/storage.js'
 import { PLAN_INICIAL, claveDiaDeFecha, litrosObjetivo } from '../data/plan.js'
 
 export const ML_POR_VASO = 250
@@ -57,6 +57,22 @@ export function saveDiaNutricion(fecha, registro) {
   dias[fecha] = registro
   saveDias(dias)
   return registro
+}
+
+// Borra el registro de una fecha. Necesario cuando un día que TENÍA algo
+// (una comida marcada, un override…) vuelve a quedar vacío: revertir el
+// override de una comida en un día por lo demás en blanco deja el registro sin
+// nada que valga la pena guardar, y sin esto el override viejo quedaría fijo en
+// disco (el autoguardado solo escribe días con contenido) y reaparecería al
+// releer. Coherente con no persistir días vacíos: si no queda nada, no queda
+// registro. Quita la clave entera cuando fue el último día, igual que las
+// sesiones activas del gym.
+export function borrarDiaNutricion(fecha) {
+  const dias = getDias()
+  if (!(fecha in dias)) return
+  delete dias[fecha]
+  if (Object.keys(dias).length === 0) borrar('nutricion')
+  else saveDias(dias)
 }
 
 // El objetivo de agua depende del tipo de día del PLAN GUARDADO (no de la

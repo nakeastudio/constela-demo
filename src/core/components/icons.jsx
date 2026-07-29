@@ -31,6 +31,8 @@ import {
   Play,
   Pause,
   Trash2,
+  Replace,
+  RotateCcw,
   Pencil,
   UtensilsCrossed,
   Droplet,
@@ -77,6 +79,8 @@ export const IconClock = icono(Clock)
 export const IconPlay = icono(Play, { fill: 'currentColor' })
 export const IconPause = icono(Pause, { fill: 'currentColor' })
 export const IconTrash = icono(Trash2)
+export const IconReplace = icono(Replace)
+export const IconRevert = icono(RotateCcw)
 export const IconEdit = icono(Pencil)
 export const IconMeal = icono(UtensilsCrossed)
 export const IconWater = icono(Droplet)

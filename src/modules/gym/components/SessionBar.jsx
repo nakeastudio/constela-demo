@@ -59,13 +59,15 @@ export default function SessionBar({ diaNombre, hecho, total, inicioMs, descansa
           Entrenamiento en curso
         </span>
         <span className="mt-0.5 flex items-center gap-1 text-xs leading-tight text-texto-soft">
-          {elapsed != null && (
-            <>
-              <IconClock className="h-3.5 w-3.5 shrink-0" />
-              <span className="shrink-0 font-semibold tabular-nums">{fmtDuracion(elapsed)}</span>
-              {diaNombre && <span className="shrink-0 text-texto-soft/60">·</span>}
-            </>
+          <IconClock className="h-3.5 w-3.5 shrink-0" />
+          {/* Sin empezar (inicioMs null): estado neutro, no un reloj en 0:00 que
+              parezca correr sin que ella haya arrancado. Nunca rojo. */}
+          {elapsed != null ? (
+            <span className="shrink-0 font-semibold tabular-nums">{fmtDuracion(elapsed)}</span>
+          ) : (
+            <span className="shrink-0 font-semibold">Sin empezar</span>
           )}
+          {diaNombre && <span className="shrink-0 text-texto-soft/60">·</span>}
           {diaNombre && <span className="truncate">{diaNombre}</span>}
         </span>
       </span>

@@ -22,15 +22,31 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import ExerciseCard from '../components/ExerciseCard.jsx'
 import CardioCard from '../components/CardioCard.jsx'
-import { crearSesion, reconciliarSesion, ultimaSesionSets, ejercicioCompleto, duracionSesionSeg, fmtDuracion } from '../lib/session.js'
+import ImagenEjercicio from '../components/ImagenEjercicio.jsx'
+import SelectorEjercicio from '../components/SelectorEjercicio.jsx'
+import {
+  crearSesion,
+  reconciliarSesion,
+  ultimaSesionSets,
+  ejercicioCompleto,
+  duracionSesionSeg,
+  fmtDuracion,
+  sesionEmpezada,
+  nuevoEjercicioDesdeCatalogo,
+  reemplazarEnDia,
+  quitarDeDia,
+  agregarADia
+} from '../lib/session.js'
 import {
   getActiveSession,
   saveActiveSession,
   clearActiveSession,
   saveSession,
+  saveRutina,
   actualizarPRs,
   getPRs
 } from '../lib/storage.js'
+import { confirmar, elegir } from '../../../core/components/Hoja.jsx'
 import { hoyISO } from '../../../core/lib/dates.js'
 import { alternarItem, ahoraISO } from '../../../core/lib/dia.js'
 import {
@@ -40,8 +56,19 @@ import {
   IconRun,
   IconNote,
   IconCheck,
-  IconClock
+  IconClock,
+  IconPlay,
+  IconPlus,
+  IconReplace,
+  IconTrash
 } from '../../../core/components/icons.jsx'
+
+// Opciones de la bifurcación "solo esta sesión / cambiar la rutina para siempre".
+// Es la MISMA decisión en swap, quitar y agregar, así que se define una vez.
+const OPCIONES_FORK = [
+  { id: 'sesion', etiqueta: 'Solo esta sesión' },
+  { id: 'rutina', etiqueta: 'Cambiar la rutina para siempre' }
+]
 
 // --- Tira de pasos: dónde estoy y cuánto falta ---
 // Es lo que devuelve la vista de conjunto que se pierde al mostrar un ejercicio
@@ -103,7 +130,7 @@ function TiraPasos({ pasos, actual, onIr, completo }) {
 // Session lo ARRANCA y lo detiene al finalizar, pero no es su dueña. Moverse
 // entre pasos NO lo toca: su `etiqueta` sigue nombrando al ejercicio que lo
 // arrancó, no al que esté en pantalla.
-export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada }) {
+export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada, onRutinaChange }) {
   const dia = rutina[diaKey]
   const prs = useRef(getPRs())
   // Sets de la última vez por ejercicio (columna "Anterior" estilo Hevy)
@@ -215,9 +242,20 @@ export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada }
       // El nombre del ejercicio va con el cronómetro: el panel se ve desde otras
       // pantallas, donde no hay "ejercicio activo" que consultar.
       if (!yaHecha) timer.iniciar(ej.descanso, ej.nombre)
-      return { ...prev, ejercicios }
+      // Marcar la PRIMERA serie arranca el reloj si "Empezar" no se pulsó: el
+      // botón de play es el camino principal, pero nadie debería registrar un
+      // entrenamiento entero con el cronómetro en 0:00 por no haberlo tocado.
+      const inicioEn = !yaHecha && !prev.inicioEn ? ahoraISO() : prev.inicioEn
+      return { ...prev, ejercicios, inicioEn }
     })
   }
+
+  // --- Empezar: arranca el reloj de pared explícitamente ---
+  // Camino principal. Sella `inicioEn` una sola vez; si ya arrancó (o es un
+  // borrador viejo ya empezado) no hace nada.
+  const empezada = sesionEmpezada(sesion)
+  const empezar = () =>
+    setSesion((prev) => (prev.inicioEn ? prev : { ...prev, inicioEn: ahoraISO() }))
 
   // Agrega una serie (copia los valores de la última como arranque, como Hevy)
   const agregarSet = (ejIdx) => {
@@ -256,6 +294,138 @@ export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada }
   }
 
   const cambiarNotas = (notas) => setSesion((prev) => ({ ...prev, notas }))
+
+  // ============================================================
+  //  DESVIARSE DEL PLAN A MITAD DE SESIÓN  (reemplazar / quitar / agregar)
+  // ============================================================
+  // La MISMA decisión en los tres: "solo esta sesión" o "cambiar la rutina para
+  // siempre". Es la plantilla (getRutina) contra el registro del día.
+  //
+  //   - "solo esta sesión" → se toca SOLO el borrador y se marca `desviada`.
+  //     La rutina queda intacta; reconciliarSesion respeta la lista de la sesión
+  //     desde ese momento (no re-inyecta lo del plan al reabrir).
+  //   - "cambiar la rutina para siempre" → se escribe la rutina (saveRutina +
+  //     onRutinaChange) Y el borrador con el MISMO cambio, así quedan alineados y
+  //     reconciliar es un no-op. NO se marca `desviada`: la sesión sigue el plan
+  //     porque ES el plan.
+  //
+  // El selector de ejercicio se abre a pantalla completa (picker); al elegir se
+  // corre el flujo asíncrono (confirmar pérdida si hay series hechas → bifurcar).
+  const [picker, setPicker] = useState(null) // null | { modo: 'swap'|'add', ejIdx }
+
+  const aplicarDesvio = (paraSiempre, mutarEjercicios, mutarDia) => {
+    if (paraSiempre) {
+      const nuevaRutina = { ...rutina, [diaKey]: mutarDia(dia) }
+      saveRutina(nuevaRutina)
+      onRutinaChange?.(nuevaRutina)
+      setSesion((prev) => ({ ...prev, ejercicios: mutarEjercicios(prev.ejercicios) }))
+    } else {
+      setSesion((prev) => ({ ...prev, desviada: true, ejercicios: mutarEjercicios(prev.ejercicios) }))
+    }
+  }
+
+  // Reemplazar el ejercicio actual por otro del catálogo.
+  const hacerSwap = async (cat, ejIdx) => {
+    const ej = sesion.ejercicios[ejIdx]
+    if (!ej) return
+    if (ej.sets.some((s) => s.done)) {
+      const ok = await confirmar({
+        titulo: 'Reemplazar ejercicio',
+        cuerpo: `«${ej.nombre}» tiene series registradas en esta sesión. Al reemplazarlo se pierden.`,
+        accion: 'Reemplazar',
+        peligro: true
+      })
+      if (!ok) return
+    }
+    const rama = await elegir({
+      titulo: 'Reemplazar ejercicio',
+      cuerpo: '¿Solo por hoy o cambiar la rutina?',
+      opciones: OPCIONES_FORK
+    })
+    if (!rama) return
+    const seccion = ej.seccion
+    aplicarDesvio(
+      rama === 'rutina',
+      (ejs) => ejs.map((e, i) => (i === ejIdx ? nuevoEjercicioDesdeCatalogo(cat, seccion) : e)),
+      (d) => reemplazarEnDia(d, ej.nombre, cat)
+    )
+  }
+
+  // Quitar el ejercicio actual.
+  const hacerRemove = async (ejIdx) => {
+    const ej = sesion.ejercicios[ejIdx]
+    if (!ej) return
+    if (ej.sets.some((s) => s.done)) {
+      const ok = await confirmar({
+        titulo: 'Quitar ejercicio',
+        cuerpo: `«${ej.nombre}» tiene series registradas en esta sesión. Al quitarlo se pierden.`,
+        accion: 'Quitar',
+        peligro: true
+      })
+      if (!ok) return
+    }
+    const rama = await elegir({
+      titulo: 'Quitar ejercicio',
+      cuerpo: '¿Solo por hoy o cambiar la rutina?',
+      opciones: OPCIONES_FORK
+    })
+    if (!rama) return
+    aplicarDesvio(
+      rama === 'rutina',
+      (ejs) => ejs.filter((_, i) => i !== ejIdx),
+      (d) => quitarDeDia(d, ej.nombre)
+    )
+    // `paso` se recorta al leer (ver más abajo): si el paso actual era el que se
+    // quitó, cae al que ocupa su lugar sin quedar fuera de rango.
+  }
+
+  // Agregar un ejercicio nuevo del catálogo (a la sección de fuerza).
+  const hacerAdd = async (cat) => {
+    const rama = await elegir({
+      titulo: 'Agregar ejercicio',
+      cuerpo: '¿Solo por hoy o cambiar la rutina?',
+      opciones: OPCIONES_FORK
+    })
+    if (!rama) return
+    aplicarDesvio(
+      rama === 'rutina',
+      (ejs) => [...ejs, nuevoEjercicioDesdeCatalogo(cat, 'fuerza')],
+      (d) => agregarADia(d, cat, 'fuerza')
+    )
+  }
+
+  // El selector devuelve { nombre, grupo, media_id } (catálogo) o { nombre, grupo }
+  // (alta a mano). Se cierra el picker y se corre el flujo según el modo.
+  const alElegirEjercicio = (cat) => {
+    const p = picker
+    setPicker(null)
+    if (!p) return
+    if (p.modo === 'swap') hacerSwap(cat, p.ejIdx)
+    else hacerAdd(cat)
+  }
+
+  // Descartar: tira el borrador SIN guardarlo en el historial. Destructivo (las
+  // series registradas se pierden), por eso confirma en `peligro`. Finalizar
+  // sigue igual y es el camino normal.
+  const descartar = async () => {
+    const ok = await confirmar({
+      titulo: 'Descartar entrenamiento',
+      cuerpo: 'Se borra este borrador y lo registrado no se guarda en el historial.',
+      accion: 'Descartar',
+      peligro: true
+    })
+    if (!ok) return
+    clearActiveSession(diaKey)
+    timer.detener()
+    // Salir DESPUÉS de que la hoja termine su "atrás" sintético. Cerrar la hoja
+    // (confirmar) dispara un history.back() propio (ver liberarAtras en
+    // useVista); salir a la vista de gym dispara OTRO (volver a la vista padre).
+    // Encadenados en el mismo tick, los dos back() compiten y la navegación se
+    // pierde —quedaba la sesión montada sin borrador—. Diferir un tick serializa:
+    // el back de la hoja se procesa primero y recién entonces navegamos. Es el
+    // ÚNICO flujo que navega tras un confirm; los demás solo tocan estado.
+    setTimeout(onSalir, 0)
+  }
 
   // Finaliza: guarda en historial, recalcula PRs, limpia el borrador del día.
   // `finalizada` es la intención; `completadaEn`, solo el cuándo.
@@ -316,9 +486,12 @@ export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada }
             <div className="flex items-baseline justify-between gap-2">
               <h1 className="truncate text-sm font-bold leading-tight tracking-tight text-texto">{dia.nombre}</h1>
               {/* Reloj de pared de la sesión, junto al avance. Neutro (no compite
-                  con el turquesa del progreso): es dato, no logro ni alarma. */}
+                  con el turquesa del progreso): es dato, no logro ni alarma.
+                  Sin empezar NO tiquea un 0:00 falso: dice "Sin empezar", que es
+                  un estado, no un error (por eso va en texto suave, nunca rojo). */}
               <span className="flex shrink-0 items-center gap-1 text-xs font-semibold tabular-nums text-texto-soft">
-                <IconClock className="h-3.5 w-3.5" /> {fmtDuracion(transcurrido)}
+                <IconClock className="h-3.5 w-3.5" />
+                {empezada ? fmtDuracion(transcurrido) : <span className="not-tabular-nums">Sin empezar</span>}
               </span>
             </div>
             <div className="mt-1.5 flex items-center gap-2">
@@ -366,6 +539,21 @@ export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada }
         </div>
       </div>
 
+      {/* Empezar: arranca el reloj de pared. Camino principal, afordancia de
+          marca (guinda = entrenamiento vivo). Desaparece una vez arrancado —el
+          reloj del encabezado toma la posta—. Marcar la primera serie también
+          arranca, pero esto es lo primero que se ve al abrir. */}
+      {!empezada && (
+        <div className="px-4 pt-4">
+          <button
+            onClick={empezar}
+            className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-marca-fuerte py-3 text-base font-extrabold text-contraste-fuerte shadow-suave active:scale-[0.98]"
+          >
+            <IconPlay className="h-5 w-5" /> Empezar
+          </button>
+        </div>
+      )}
+
       {/* Dónde estoy y qué viene. Saber qué sigue deja preparar la barra o el
           peso antes de llegar; la tira sola da la posición, no el plan. */}
       <div className="px-4 pt-4">
@@ -396,15 +584,19 @@ export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada }
 
         {actual.tipo === 'ejercicio' && (
           <>
-            {/* SEAM DE LA IMAGEN DEL EJERCICIO.
-                El renderer compartido del catálogo (que resuelve `media_id` y
-                maneja el caso ausente/fallido) todavía no existe en el repo.
-                Cuando llegue, esto es UNA línea:
-                  <MediaEjercicio mediaId={sesion.ejercicios[actual.idx].mediaId} />
-                No se escribe acá un segundo renderer ni un segundo fallback: sin
-                imagen no se pinta nada, y no hay hueco roto. `media_id` es
-                opcional para siempre (rutina propia, ejercicios fuera de
-                catálogo), así que "sin imagen" es lo NORMAL, no una falla. */}
+            {/* Imagen del ejercicio: el MISMO renderer que usa el catálogo, que
+                resuelve `media_id` y maneja el caso ausente/fallido con un
+                placeholder. Los levantamientos propios (sentadilla, peso muerto)
+                no tienen `media_id`: el placeholder es lo NORMAL, no un hueco roto
+                —por eso el cuadro se reserva grande e intencional, no un ícono
+                perdido—. No se reinventa el fallback: vive una sola vez en
+                ImagenEjercicio. */}
+            <ImagenEjercicio
+              mediaId={sesion.ejercicios[actual.idx].mediaId}
+              className="aspect-[4/3] w-full"
+              iconClassName="h-12 w-12"
+            />
+
             <ExerciseCard
               ejercicio={sesion.ejercicios[actual.idx]}
               anteriores={anteriores.current[sesion.ejercicios[actual.idx].nombre]}
@@ -415,6 +607,33 @@ export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada }
               onAddSet={() => agregarSet(actual.idx)}
               onRemoveSet={() => quitarSet(actual.idx)}
             />
+
+            {/* Desviarse del plan a mitad de sesión. Reemplazar/Quitar actúan
+                sobre el ejercicio actual; Agregar suma uno nuevo. Cada uno abre la
+                bifurcación "solo esta sesión / cambiar la rutina para siempre".
+                Neutros: cambiar el plan del día no es un error. */}
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPicker({ modo: 'swap', ejIdx: actual.idx })}
+                  className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-superficie-alta text-sm font-bold text-texto active:scale-[0.98]"
+                >
+                  <IconReplace className="h-4 w-4" /> Reemplazar
+                </button>
+                <button
+                  onClick={() => hacerRemove(actual.idx)}
+                  className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-superficie-alta text-sm font-bold text-texto active:scale-[0.98]"
+                >
+                  <IconTrash className="h-4 w-4" /> Quitar
+                </button>
+              </div>
+              <button
+                onClick={() => setPicker({ modo: 'add' })}
+                className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-marca/40 text-sm font-bold text-marca active:scale-[0.98]"
+              >
+                <IconPlus className="h-4 w-4" /> Agregar ejercicio
+              </button>
+            </div>
           </>
         )}
 
@@ -454,6 +673,16 @@ export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada }
             >
               <IconCheck className="h-6 w-6" /> Finalizar entrenamiento
             </button>
+
+            {/* Descartar: tirar el borrador sin guardarlo. Es lo destructivo, así
+                que va discreto y aparte de Finalizar (el camino normal), y confirma
+                en `peligro`. Texto suave: no compite con Finalizar ni grita. */}
+            <button
+              onClick={descartar}
+              className="flex min-h-[44px] w-full items-center justify-center gap-1.5 text-sm font-semibold text-peligro active:scale-[0.99]"
+            >
+              <IconTrash className="h-4 w-4" /> Descartar entrenamiento
+            </button>
           </>
         )}
 
@@ -464,6 +693,17 @@ export default function Session({ rutina, diaKey, timer, onSalir, onFinalizada }
             navegaciones para lo mismo confunden. Vive arriba, entera, siempre. */}
       </div>
       {/* El panel del cronómetro lo renderiza App: sigue visible al navegar. */}
+
+      {/* Selector de ejercicio a pantalla completa (reusa el del catálogo, con su
+          buscador, filtro por grupo y alta a mano). Se comparte para reemplazar y
+          para agregar; el modo decide qué se hace al elegir. */}
+      {picker && (
+        <SelectorEjercicio
+          seccion={picker.modo === 'swap' ? sesion.ejercicios[picker.ejIdx]?.seccion || 'fuerza' : 'fuerza'}
+          onElegir={alElegirEjercicio}
+          onCerrar={() => setPicker(null)}
+        />
+      )}
     </div>
   )
 }

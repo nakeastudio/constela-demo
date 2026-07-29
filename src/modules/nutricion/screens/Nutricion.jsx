@@ -14,6 +14,7 @@ import {
   planDesactualizado,
   getDiaNutricion,
   saveDiaNutricion,
+  borrarDiaNutricion,
   litrosObjetivoDe,
   claveDiaDeFecha,
   ML_POR_VASO
@@ -32,7 +33,9 @@ import {
   IconNote,
   IconInfo,
   IconPlus,
-  IconMinus
+  IconMinus,
+  IconEdit,
+  IconRevert
 } from '../../../core/components/icons.jsx'
 
 // Tailwind necesita las clases literales, así que los tintes se enumeran.
@@ -79,9 +82,10 @@ const ESTILO = {
 const estiloDe = (categoria) => ESTILO[categoria] || ESTILO.cafe
 
 // ¿El registro tiene algo? Evita guardar días vacíos solo por abrirlos.
+// `override` cuenta: reemplazar lo que comió (sin marcarlo) es un dato del día.
 function tieneAlgo(r) {
   return (
-    Object.values(r.comidas || {}).some((c) => c.done || c.nota || c.carbo) ||
+    Object.values(r.comidas || {}).some((c) => c.done || c.nota || c.carbo || c.override) ||
     Object.values(r.suplementos || {}).some((s) => s.done) ||
     (r.agua?.ml || 0) > 0
   )
@@ -230,27 +234,106 @@ function SelectorCarbo({ carbos, elegido, onElegir, estilo }) {
   )
 }
 
+// --- Editor de override: qué comió de verdad hoy, solo para esta fecha ---
+// El título y los ítems se editan sin tocar el plan. Los ítems son una línea por
+// renglón (igual que se leen). Guardar escribe el override; "Volver al plan"
+// lo borra. Sale del plan como semilla para no arrancar en blanco.
+function EditorOverride({ tituloInicial, itemsIniciales, estilo, onGuardar, onCancelar, onRevertir, esOverride }) {
+  const [titulo, setTitulo] = useState(tituloInicial)
+  const [texto, setTexto] = useState((itemsIniciales || []).join('\n'))
+
+  const guardar = () => {
+    const items = texto
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+    onGuardar({ titulo: titulo.trim() || tituloInicial, items })
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      <label className={`block text-[11px] font-bold uppercase tracking-wide ${estilo.suave}`}>
+        Qué comí
+        <input
+          value={titulo}
+          onChange={(e) => setTitulo(e.target.value)}
+          placeholder="Título"
+          className={`mt-1 min-h-[44px] w-full rounded-xl border border-current/20 bg-transparent px-2.5 text-sm font-semibold outline-none focus:border-current/50 ${estilo.texto}`}
+        />
+      </label>
+      <textarea
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        placeholder={'Un ítem por línea'}
+        rows={3}
+        className={`w-full resize-none rounded-xl border border-current/20 bg-transparent p-2.5 text-sm outline-none placeholder:opacity-60 focus:border-current/50 ${estilo.texto}`}
+      />
+      <div className="flex gap-2">
+        <button
+          onClick={guardar}
+          className={`min-h-[44px] flex-1 rounded-xl text-sm font-bold ${estilo.relleno}`}
+        >
+          Guardar
+        </button>
+        <button
+          onClick={onCancelar}
+          className={`min-h-[44px] rounded-xl border border-current/25 px-4 text-sm font-semibold ${estilo.suave}`}
+        >
+          Cancelar
+        </button>
+      </div>
+      {esOverride && (
+        <button
+          onClick={onRevertir}
+          className={`flex min-h-[44px] w-full items-center justify-center gap-1.5 text-xs font-semibold ${estilo.suave}`}
+        >
+          <IconRevert className="h-4 w-4" /> Volver a la comida del plan
+        </button>
+      )}
+    </div>
+  )
+}
+
 // --- Tarjeta de comida ---
-function TarjetaComida({ comida, registro, carbos, fecha, onToggle, onNota, onCarbo, onHora }) {
+function TarjetaComida({ comida, registro, carbos, fecha, onToggle, onNota, onCarbo, onHora, onOverride }) {
   const estilo = estiloDe(comida.categoria)
   const hecho = !!registro?.done
   const [abriNota, setAbriNota] = useState(!!registro?.nota)
+  const [editando, setEditando] = useState(false)
+
+  // El override reemplaza lo que muestra la tarjeta SOLO para esta fecha. Si no
+  // hay, se ve la comida del plan tal cual. El detalle del plan solo tiene
+  // sentido cuando no hubo reemplazo (es una nota de la plantilla).
+  const override = registro?.override
+  const esOverride = !!override
+  const titulo = override?.titulo ?? comida.titulo
+  const items = override?.items ?? comida.items
 
   return (
     <section className={`rounded-2xl border p-4 shadow-suave ${estilo.tarjeta}`}>
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <p className={`text-[11px] font-bold uppercase tracking-wide ${estilo.etiqueta}`}>
-            {comida.titulo}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className={`text-[11px] font-bold uppercase tracking-wide ${estilo.etiqueta}`}>
+              {titulo}
+            </p>
+            {/* Marcador sutil de "distinto al plan": informa, no alarma (neutro,
+                nunca rojo). Deja distinguir de un vistazo una comida del plan de
+                una que ella reemplazó por lo que realmente comió. */}
+            {esOverride && (
+              <span className={`rounded-full border border-current/30 px-2 py-0.5 text-[10px] font-bold ${estilo.suave}`}>
+                Distinto al plan
+              </span>
+            )}
+          </div>
           <ul className={`mt-1 space-y-0.5 text-sm font-medium ${estilo.texto}`}>
-            {comida.items.map((it, i) => (
+            {items.map((it, i) => (
               <li key={i} className="leading-snug">
                 {it}
               </li>
             ))}
           </ul>
-          {comida.detalle && (
+          {comida.detalle && !esOverride && (
             <p className={`mt-1 text-xs font-medium ${estilo.suave}`}>{comida.detalle}</p>
           )}
         </div>
@@ -260,7 +343,7 @@ function TarjetaComida({ comida, registro, carbos, fecha, onToggle, onNota, onCa
           onClick={onToggle}
           role="switch"
           aria-checked={hecho}
-          aria-label={`Marcar ${comida.titulo}`}
+          aria-label={`Marcar ${titulo}`}
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-transform active:scale-90 ${
             hecho ? estilo.relleno : `border-2 border-current/30 ${estilo.suave}`
           }`}
@@ -286,6 +369,32 @@ function TarjetaComida({ comida, registro, carbos, fecha, onToggle, onNota, onCa
           onElegir={onCarbo}
           estilo={estilo}
         />
+      )}
+
+      {/* Editar lo que comió (override del día) */}
+      {editando ? (
+        <EditorOverride
+          tituloInicial={titulo}
+          itemsIniciales={items}
+          estilo={estilo}
+          esOverride={esOverride}
+          onGuardar={(ov) => {
+            onOverride(ov)
+            setEditando(false)
+          }}
+          onCancelar={() => setEditando(false)}
+          onRevertir={() => {
+            onOverride(null)
+            setEditando(false)
+          }}
+        />
+      ) : (
+        <button
+          onClick={() => setEditando(true)}
+          className={`mt-2 flex min-h-[44px] items-center gap-1.5 text-xs font-semibold ${estilo.suave}`}
+        >
+          <IconEdit className="h-4 w-4" /> {esOverride ? 'Editar lo que comí' : 'Comí algo distinto'}
+        </button>
       )}
 
       {/* Anotaciones */}
@@ -441,6 +550,11 @@ export default function Nutricion({ fechaInicial, onSalir }) {
   const actualizar = (fn) => setEstado((e) => ({ ...e, registro: fn(e.registro) }))
 
   // Autoguardado. No persiste días vacíos: abrir una fecha no la "registra".
+  // Pero un día que TENÍA algo y vuelve a quedar vacío (revertir el override de
+  // una comida en un día por lo demás en blanco) sí se persiste como borrado:
+  // si solo se guardaran los días con contenido, el override viejo quedaría en
+  // disco y reaparecería al releer la fecha. Por eso el else borra en vez de no
+  // hacer nada. El montaje sigue sin escribir para no "registrar" al abrir.
   const montado = useRef(false)
   useEffect(() => {
     if (!montado.current) {
@@ -448,6 +562,7 @@ export default function Nutricion({ fechaInicial, onSalir }) {
       if (!tieneAlgo(registro)) return
     }
     if (tieneAlgo(registro)) saveDiaNutricion(fecha, registro)
+    else borrarDiaNutricion(fecha)
   }, [fecha, registro])
 
   const dia = plan.dias[claveDiaDeFecha(fecha)]
@@ -481,6 +596,21 @@ export default function Nutricion({ fechaInicial, onSalir }) {
       ...r,
       comidas: { ...r.comidas, [id]: { ...(r.comidas[id] || { done: false, registradoEn: null }), carbo } }
     }))
+
+  // Override del día: reemplaza lo que REALMENTE comió en una comida SOLO para
+  // esta fecha, sin tocar el plan (getPlan). Vive en el registro por fecha
+  // (comidas[id].override = { titulo, items }); el plan sigue siendo la fuente
+  // para los demás días. `null` revierte: se borra el override y vuelve la comida
+  // del plan. Misma bifurcación que el gym —desviarse hoy vs cambiar la
+  // plantilla— pero acá "para siempre" es editar el plan, que es otra pantalla.
+  const overrideComida = (id, override) =>
+    actualizar((r) => {
+      const actual = r.comidas[id] || { done: false, registradoEn: null }
+      const siguiente = { ...actual }
+      if (override) siguiente.override = override
+      else delete siguiente.override
+      return { ...r, comidas: { ...r.comidas, [id]: siguiente } }
+    })
 
   const toggleSuplemento = (id) =>
     actualizar((r) => ({
@@ -557,6 +687,7 @@ export default function Nutricion({ fechaInicial, onSalir }) {
               onNota={(n) => notaComida(c.id, n)}
               onCarbo={(k) => carboComida(c.id, k)}
               onHora={(iso) => horaComida(c.id, iso)}
+              onOverride={(ov) => overrideComida(c.id, ov)}
             />
           ))}
 
@@ -613,7 +744,7 @@ export default function Nutricion({ fechaInicial, onSalir }) {
               vive en el editor de rutina y no en la pantalla del día. */}
           {desactualizado && (
             <p className="rounded-xl bg-superficie-alta px-3 py-2 text-xs font-semibold text-texto">
-              Hay una versión más nueva del plan original. Podés restaurarla desde Ajustes → Editar plan.
+              Hay una versión más nueva del plan original. Puedes restaurarla desde Ajustes → Editar plan.
             </p>
           )}
         </>

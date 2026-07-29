@@ -278,7 +278,14 @@ export default function App({ sesion }) {
       )}
       {vista === 'skincareEditor' && <RutinasEditor onSalir={() => irA('settings')} />}
       {vista === 'session' && diaKey && (
-        <Session rutina={rutina} diaKey={diaKey} timer={timer} onSalir={() => irA('gym')} onFinalizada={finalizada} />
+        <Session
+          rutina={rutina}
+          diaKey={diaKey}
+          timer={timer}
+          onSalir={() => irA('gym')}
+          onFinalizada={finalizada}
+          onRutinaChange={setRutina}
+        />
       )}
       {/* Historial cruzado: itera el registro y enruta a cada módulo. Ya no es
           "el historial del gym": el pasado es un horizonte, no un módulo. */}

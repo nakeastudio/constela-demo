@@ -77,9 +77,38 @@ function nuevoEjercicioSesion(ej) {
     descanso: ej.descanso,
     repsObjetivo: ej.reps,
     seriesObjetivo: ej.series,
+    // `mediaId` viaja con el registro para que la sesión muestre la imagen del
+    // catálogo mientras se entrena. Es opcional para siempre (rutina propia,
+    // ejercicio a mano): sin él, ImagenEjercicio pinta el placeholder, que es el
+    // caso NORMAL, no una falla. Se acepta `media_id` (forma del catálogo) o
+    // `mediaId` por si el plan ya lo trae normalizado.
+    mediaId: ej.media_id ?? ej.mediaId ?? null,
     sets,
     done: false
   }
+}
+
+// Defaults de un ejercicio recién elegido del catálogo a mitad de sesión: el
+// selector solo devuelve identidad (nombre/grupo/media_id), no el esquema, así
+// que se completa con series/reps/descanso razonables. Se editan como cualquier
+// ejercicio (agregar/quitar series en la tarjeta).
+const EJ_NUEVO = { series: 3, reps: '10-12', descanso: 60, tipoReg: 'peso' }
+
+// Convierte la elección del catálogo (o del alta a mano) en la forma de plan que
+// consume nuevoEjercicioSesion. `seccion` decide fuerza vs core.
+export function ejercicioDesdeCatalogo(cat, seccion = 'fuerza') {
+  return {
+    nombre: cat.nombre,
+    grupo: cat.grupo,
+    media_id: cat.media_id ?? null,
+    seccion,
+    ...EJ_NUEVO
+  }
+}
+
+// Registro de sesión listo para un ejercicio elegido del catálogo.
+export function nuevoEjercicioDesdeCatalogo(cat, seccion = 'fuerza') {
+  return nuevoEjercicioSesion(ejercicioDesdeCatalogo(cat, seccion))
 }
 
 // Crea una sesión nueva (o draft) lista para registrar
@@ -100,8 +129,25 @@ export function crearSesion(diaKey, dia, fecha) {
     // contador en memoria: el tiempo transcurrido se DERIVA de `ahora - inicioEn`,
     // así sobrevive a navegar, recargar y al segundo plano —vuelve con el valor
     // real, no congelado donde se detuvo el JS— (misma lección que el descanso).
-    inicioEn: ahoraISO()
+    //
+    // Nace en NULL = borrador "sin empezar": el reloj no corre hasta que ella
+    // pulsa "Empezar" (o marca la primera serie, que también arranca). Antes se
+    // sellaba al crear y el cronómetro corría desde que abría la pantalla, aunque
+    // todavía no estuviera entrenando. Los borradores VIEJOS traen `inicioEn`
+    // seteado y se leen como ya empezados (ver sesionEmpezada): sin migración.
+    inicioEn: null
   }
+}
+
+// ¿El entrenamiento arrancó? El reloj corre desde `inicioEn`. Un borrador nuevo
+// nace sin empezar (inicioEn null). Un borrador VIEJO (anterior a "Empezar") no
+// tiene el campo pero puede traer series marcadas: se lee como empezado por su
+// primera serie registrada, así nunca muestra "sin empezar" algo que ya se
+// entrenó. Nada se pinta como error: "sin empezar" es un estado neutro.
+export function sesionEmpezada(s) {
+  if (!s) return false
+  if (s.inicioEn) return true
+  return (s.ejercicios || []).some((e) => (e.sets || []).some((x) => x.registradoEn))
 }
 
 // ¿Estos dos ejercicios de sesión son equivalentes para autoguardar?
@@ -122,6 +168,7 @@ function ejerciciosIguales(a, b) {
       x.repsObjetivo === y.repsObjetivo &&
       x.seriesObjetivo === y.seriesObjetivo &&
       x.grupo === y.grupo &&
+      x.mediaId === y.mediaId &&
       x.sets === y.sets
     )
   })
@@ -152,6 +199,38 @@ function ejerciciosIguales(a, b) {
 // conserva) y el nombre nuevo arranca vacío. Es raro y no pierde nada.
 export function reconciliarSesion(draft, dia) {
   const plan = ejerciciosDelDia(dia)
+
+  // Sesión DESVIADA: ella editó la lista de ejercicios DENTRO de la sesión
+  // ("solo esta sesión" — cambió, quitó o agregó un ejercicio sin tocar la
+  // rutina). Desde ese momento la lista de la sesión es SUYA: reconciliar contra
+  // el plan la pisaría (un ejercicio agregado a mano, sin series marcadas
+  // todavía, se vería como huérfano sin datos y se descartaría al reabrir; uno
+  // quitado volvería desde el plan). Así que no se agrega ni se quita nada del
+  // plan: solo se refrescan los CAMPOS de los que siguen coincidiendo por nombre
+  // (si además editó reps/descanso en el editor, eso sí se refleja). El orden y
+  // la composición son de la sesión. Los cambios "para siempre" NO marcan
+  // desviada: escriben rutina y borrador a la vez, así que el camino normal
+  // reconcilia sin novedad.
+  if (draft.desviada) {
+    const porNombrePlan = new Map(plan.map((p) => [p.nombre, p]))
+    const ejercicios = draft.ejercicios.map((e) => {
+      const p = porNombrePlan.get(e.nombre)
+      if (!p) return e
+      return {
+        ...e,
+        grupo: p.grupo,
+        seccion: p.seccion,
+        tipoReg: p.tipoReg || 'peso',
+        descanso: p.descanso,
+        repsObjetivo: p.reps,
+        seriesObjetivo: p.series,
+        mediaId: p.media_id ?? p.mediaId ?? e.mediaId ?? null
+      }
+    })
+    if (ejerciciosIguales(draft.ejercicios, ejercicios)) return draft
+    return { ...draft, ejercicios }
+  }
+
   const porNombre = new Map(draft.ejercicios.map((e) => [e.nombre, e]))
   const usados = new Set()
 
@@ -166,7 +245,8 @@ export function reconciliarSesion(draft, dia) {
       tipoReg: p.tipoReg || 'peso',
       descanso: p.descanso,
       repsObjetivo: p.reps,
-      seriesObjetivo: p.series
+      seriesObjetivo: p.series,
+      mediaId: p.media_id ?? p.mediaId ?? prev.mediaId ?? null
     }
   })
 
@@ -278,5 +358,57 @@ export function sesionEnCurso() {
   if (!draft) return null
   const total = draft.ejercicios.reduce((a, e) => a + e.sets.length, 0)
   const hecho = draft.ejercicios.reduce((a, e) => a + e.sets.filter((x) => x.done).length, 0)
-  return { diaKey: draft.diaKey, diaNombre: draft.diaNombre, hecho, total, inicioMs: inicioSesionMs(draft) }
+  // `inicioMs` null = sin empezar: la barra muestra "Sin empezar", no un reloj en
+  // 0:00 (ver SessionBar). Un borrador ya empezado —o uno viejo con series
+  // marcadas— sí trae el arranque real.
+  return {
+    diaKey: draft.diaKey,
+    diaNombre: draft.diaNombre,
+    hecho,
+    total,
+    inicioMs: sesionEmpezada(draft) ? inicioSesionMs(draft) : null
+  }
+}
+
+// ============================================================
+//  EDICIÓN DE LA RUTINA DESDE LA SESIÓN  ("cambiar para siempre")
+// ============================================================
+// Un día de la rutina separa `ejercicios` (fuerza) y `core`; la sesión los
+// aplana con `seccion`. Estos helpers escriben en el día de la rutina PARA
+// SIEMPRE cuando ella elige esa rama de la bifurcación. Son puros: reciben el
+// día y devuelven uno nuevo; quien los llama hace saveRutina + setRutina.
+//
+// Buscan por NOMBRE (la identidad del ejercicio, igual que reconciliarSesion) en
+// ambas secciones, así no importa si el ejercicio es de fuerza o de core.
+
+// Reemplaza la IDENTIDAD de un ejercicio (nombre/grupo/media_id) conservando su
+// esquema (series/reps/descanso/tipoReg/aprox): es "el mismo lugar del plan, otro
+// movimiento". Si el reemplazo trae otro esquema, se ajusta después en el editor.
+export function reemplazarEnDia(dia, nombreViejo, cat) {
+  const mapear = (arr) =>
+    (arr || []).map((e) =>
+      e.nombre === nombreViejo
+        ? { ...e, nombre: cat.nombre, grupo: cat.grupo, media_id: cat.media_id ?? null }
+        : e
+    )
+  return { ...dia, ejercicios: mapear(dia.ejercicios), core: mapear(dia.core) }
+}
+
+// Quita un ejercicio del día por nombre (de fuerza o de core).
+export function quitarDeDia(dia, nombre) {
+  const filtrar = (arr) => (arr || []).filter((e) => e.nombre !== nombre)
+  return { ...dia, ejercicios: filtrar(dia.ejercicios), core: filtrar(dia.core) }
+}
+
+// Agrega un ejercicio del catálogo al día. `seccion` decide fuerza vs core; se
+// añade al final de esa sección con el esquema por defecto (editable luego).
+export function agregarADia(dia, cat, seccion = 'fuerza') {
+  const nuevo = {
+    nombre: cat.nombre,
+    grupo: cat.grupo,
+    media_id: cat.media_id ?? null,
+    ...EJ_NUEVO
+  }
+  const clave = seccion === 'core' ? 'core' : 'ejercicios'
+  return { ...dia, [clave]: [ ...(dia[clave] || []), nuevo ] }
 }

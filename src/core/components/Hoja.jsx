@@ -53,6 +53,20 @@ export function confirmar({ titulo, cuerpo, accion = 'Confirmar', cancelar = 'Ca
   return encolar({ tipo: 'confirm', titulo, cuerpo, accion, cancelar, peligro })
 }
 
+// Elección entre VARIAS opciones (misma hoja, no un diálogo aparte). Para las
+// bifurcaciones tipo "solo esta sesión / cambiar la rutina para siempre": una
+// decisión de dos (o más) caminos que un confirm de sí/no no expresa. Devuelve
+// Promise<id> con el `id` de la opción elegida, o `null` si se cancela o se
+// descarta (scrim/Esc/atrás) — nunca elige algo por las dudas.
+//
+// `opciones`: [{ id, etiqueta, peligro? }]. La primera se pinta como primaria
+// (guinda), salvo que sea `peligro`. Reusa toda la maquinaria de la hoja (cola,
+// atrás del sistema, trampa de foco, transición): es una variante, no un sistema
+// nuevo.
+export function elegir({ titulo, cuerpo, opciones = [], cancelar = 'Cancelar' }) {
+  return encolar({ tipo: 'choice', titulo, cuerpo, opciones, cancelar })
+}
+
 // Aviso de un solo botón (reemplaza `alert()`). Acepta texto suelto o un objeto.
 // `tono`: 'ok' (algo se completó → tilde turquesa, el color de lo hecho) o
 // 'neutral' (información/error → ícono suave, sin rojo: un error no es una
@@ -121,9 +135,11 @@ export default function Hoja() {
   }
 
   // El atrás del sistema es un descarte ambiguo más, igual que el scrim o Esc:
-  // en confirm cancela (false), en aviso solo cierra. Se publica en cada render
-  // para que el cierre siempre apunte a la hoja que está pintada.
-  descartarPintada = pintado ? () => cerrar(pintado.tipo === 'confirm' ? false : undefined) : null
+  // en confirm cancela (false), en elección devuelve null (no elige nada), en
+  // aviso solo cierra. Se publica en cada render para que el cierre siempre
+  // apunte a la hoja que está pintada.
+  const resultadoDescarte = (tipo) => (tipo === 'confirm' ? false : tipo === 'choice' ? null : undefined)
+  descartarPintada = pintado ? () => cerrar(resultadoDescarte(pintado.tipo)) : null
 
   if (!pintado) return null
   return <Pieza req={pintado} abierto={abierto} onCerrar={cerrar} />
@@ -134,9 +150,11 @@ function Pieza({ req, abierto, onCerrar }) {
   const cajaRef = useRef(null)
   const focoInicialRef = useRef(null)
   const esConfirm = req.tipo === 'confirm'
+  const esChoice = req.tipo === 'choice'
 
-  // Descarte ambiguo (scrim/Esc): en confirm = cancelar (false); en aviso = cerrar.
-  const descartar = () => onCerrar(esConfirm ? false : undefined)
+  // Descarte ambiguo (scrim/Esc): en confirm = cancelar (false); en elección =
+  // null (no elige nada); en aviso = cerrar (undefined).
+  const descartar = () => onCerrar(esConfirm ? false : esChoice ? null : undefined)
 
   // Foco al abrir → botón seguro (cancelar en confirm; descartar en aviso), así
   // Enter no dispara lo destructivo. Se devuelve al disparador al desmontar.
@@ -182,7 +200,7 @@ function Pieza({ req, abierto, onCerrar }) {
 
   const tituloId = `hoja-titulo-${req.id}`
   const cuerpoId = `hoja-cuerpo-${req.id}`
-  const texto = esConfirm ? req.cuerpo : req.mensaje
+  const texto = esConfirm || esChoice ? req.cuerpo : req.mensaje
 
   return createPortal(
     <div className="fixed inset-0 z-[70] flex items-end justify-center" onKeyDown={alTeclado}>
@@ -216,7 +234,7 @@ function Pieza({ req, abierto, onCerrar }) {
         <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-texto-soft/30" aria-hidden="true" />
 
         <div className="flex gap-3">
-          {!esConfirm && (
+          {req.tipo === 'notice' && (
             <span className="mt-0.5 shrink-0" aria-hidden="true">
               {req.tono === 'ok' ? (
                 <IconCheck className="h-5 w-5 text-completo" />
@@ -258,6 +276,34 @@ function Pieza({ req, abierto, onCerrar }) {
                 ref={focoInicialRef}
                 onClick={() => onCerrar(false)}
                 className="min-h-[48px] w-full rounded-2xl bg-superficie-alta px-4 text-sm font-semibold text-texto transition-transform duration-150 ease-out active:scale-[0.98]"
+              >
+                {req.cancelar}
+              </button>
+            </>
+          ) : esChoice ? (
+            <>
+              {req.opciones.map((op, i) => (
+                <button
+                  key={op.id}
+                  onClick={() => onCerrar(op.id)}
+                  // La primera opción es la primaria (guinda). Una opción
+                  // destructiva va en `peligro`. El resto, neutro. Ninguna elección
+                  // se pinta como error salvo que sea de verdad destructiva.
+                  className={`min-h-[48px] w-full rounded-2xl px-4 text-sm font-bold transition-transform duration-150 ease-out active:scale-[0.98] ${
+                    op.peligro
+                      ? 'bg-peligro-fuerte text-contraste-fuerte shadow-suave'
+                      : i === 0
+                        ? 'bg-marca-fuerte text-contraste-fuerte shadow-suave'
+                        : 'bg-superficie-alta text-texto'
+                  }`}
+                >
+                  {op.etiqueta}
+                </button>
+              ))}
+              <button
+                ref={focoInicialRef}
+                onClick={() => onCerrar(null)}
+                className="min-h-[48px] w-full rounded-2xl px-4 text-sm font-semibold text-texto-soft transition-transform duration-150 ease-out active:scale-[0.98]"
               >
                 {req.cancelar}
               </button>
